@@ -6,6 +6,7 @@ jobs:
   industrial_ci:
     name: ROS ${{ matrix.ros_distro }} (${{ matrix.ros_repo }})
     strategy:
+      fail-fast: false
       matrix:
         ros_distro: [jazzy, rolling]
         ros_repo: [testing, main]
@@ -16,4 +17,5 @@ jobs:
         env:
           ROS_DISTRO: ${{ matrix.ros_distro }}
           ROS_REPO: ${{ matrix.ros_repo }}
-          UPSTREAM_WORKSPACE: kuka_rsi_driver.${{ matrix.ros_distro }}.repos
+          UPSTREAM_WORKSPACE: kuka_rsi_driver.${{ matrix.ros_distro }}.repos -ros2_controllers/admittance_controller
+          UPSTREAM_CMAKE_ARGS: -DBUILD_TESTING:BOOL=Off
