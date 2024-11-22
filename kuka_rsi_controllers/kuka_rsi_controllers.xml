@@ -1,0 +1,9 @@
+<library path="kuka_rsi_controllers">
+  <class name="kuka_rsi_controllers/StatusBroadcaster"
+         type="kuka_rsi_controllers::StatusBroadcaster"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Publish the current execution state of the robot.
+    </description>
+  </class>
+</library>

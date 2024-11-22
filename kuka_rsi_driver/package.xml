@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>kuka_rsi_driver</name>
+  <version>0.0.0</version>
+  <description>ros2_control driver for kuka robots using the RSI interface</description>
+
+  <maintainer email="wilbrandt@fzi.de">Robert Wilbrandt</maintainer>
+
+  <license>BSD-3-Clause</license>
+
+  <author>Robert Wilbrandt</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <depend>boost</depend>
+  <depend>fmt</depend>
+  <depend>libexpat1-dev</depend>
+  <depend>liblttng-ust-dev</depend>
+  <depend>liborocos-kdl-dev</depend>
+  <depend>lifecycle_msgs</depend>
+  <depend>hardware_interface</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>joint_trajectory_controller</exec_depend>
+  <exec_depend>kuka_rsi_controllers</exec_depend>
+  <exec_depend>pose_broadcaster</exec_depend>
+  <exec_depend>position_controllers</exec_depend>
+  <exec_depend>python-argparse</exec_depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>tf2</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

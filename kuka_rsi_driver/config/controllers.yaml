@@ -1,0 +1,51 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 250
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    pose_broadcaster:
+      type: pose_broadcaster/PoseBroadcaster
+
+    status_broadcaster:
+      type: kuka_rsi_controllers/StatusBroadcaster
+
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    forward_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+pose_broadcaster:
+  ros__parameters:
+    frame_id: $(var prefix)base_link
+    pose_name: tcp
+
+joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - $(var prefix)joint_a1
+      - $(var prefix)joint_a2
+      - $(var prefix)joint_a3
+      - $(var prefix)joint_a4
+      - $(var prefix)joint_a5
+      - $(var prefix)joint_a6
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+
+    speed_scaling_state_interface_name: speed_scaling/speed_scaling_factor
+
+forward_position_controller:
+  ros__parameters:
+    joints:
+      - $(var prefix)joint_a1
+      - $(var prefix)joint_a2
+      - $(var prefix)joint_a3
+      - $(var prefix)joint_a4
+      - $(var prefix)joint_a5
+      - $(var prefix)joint_a6
