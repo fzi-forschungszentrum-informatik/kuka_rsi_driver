@@ -134,7 +134,6 @@ ament_python_install_package(
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   find_package(ament_cmake_gtest REQUIRED)
-  find_package(tf2 REQUIRED)
 
   set(ament_cmake_cpplint_FOUND TRUE)
   set(ament_cmake_uncrustify_FOUND TRUE)
@@ -146,7 +145,6 @@ if(BUILD_TESTING)
   )
   target_link_libraries(kuka_rsi_driver_test
     kuka_rsi_driver
-    tf2::tf2
   )
 
   set(AMENT_LINT_AUTO_FILE_EXCLUDE doc/conf.py)
