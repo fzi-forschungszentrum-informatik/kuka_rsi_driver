@@ -27,7 +27,7 @@ This driver was tested on a limited set of robots (see [Tested with](#tested-wit
               <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/jazzy_main.yml/badge.svg?branch=main"alt="Jazzy Main"/>
             </a> <br />
             <a href="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/jazzy_testing.yml">
-              <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/jazzy_testing.yml/badge.svg?branch=testing"alt="Jazzy Testing"/>
+              <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/jazzy_testing.yml/badge.svg?branch=main"alt="Jazzy Testing"/>
             </a>
         </td>
         <td>
@@ -35,7 +35,7 @@ This driver was tested on a limited set of robots (see [Tested with](#tested-wit
               <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/rolling_main.yml/badge.svg?branch=main"alt="Rolling Main"/>
             </a> <br />
             <a href="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/rolling_testing.yml">
-              <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/rolling_testing.yml/badge.svg?branch=testing"alt="Rolling Testing"/>
+              <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/rolling_testing.yml/badge.svg?branch=main"alt="Rolling Testing"/>
             </a>
         </td>
     </tr>
