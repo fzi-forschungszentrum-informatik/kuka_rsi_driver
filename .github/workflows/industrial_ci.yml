@@ -1,21 +1,24 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  workflow_call:
+    inputs:
+      ros_distro:
+        required: true
+        type: string
+      ros_repo:
+        required: true
+        type: string
 
 jobs:
   industrial_ci:
     name: ROS ${{ matrix.ros_distro }} (${{ matrix.ros_repo }})
-    strategy:
-      fail-fast: false
-      matrix:
-        ros_distro: [jazzy, rolling]
-        ros_repo: [testing, main]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: 'ros-industrial/industrial_ci@master'
         env:
-          ROS_DISTRO: ${{ matrix.ros_distro }}
-          ROS_REPO: ${{ matrix.ros_repo }}
-          UPSTREAM_WORKSPACE: kuka_rsi_driver.${{ matrix.ros_distro }}.repos -ros2_controllers/admittance_controller
+          ROS_DISTRO: ${{ inputs.ros_distro }}
+          ROS_REPO: ${{ inputs.ros_repo }}
+          UPSTREAM_WORKSPACE: kuka_rsi_driver.${{ inputs.ros_distro }}.repos -ros2_controllers/admittance_controller
           UPSTREAM_CMAKE_ARGS: -DBUILD_TESTING:BOOL=Off

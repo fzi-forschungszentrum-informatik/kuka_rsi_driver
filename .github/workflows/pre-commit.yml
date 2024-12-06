@@ -1,0 +1,17 @@
+name: pre-commit
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+      - name: Install relevant linters
+        run: sudo apt install clang-format-18 clang-tidy-18
+      - uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files --hook-stage manual

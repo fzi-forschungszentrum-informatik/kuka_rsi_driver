@@ -10,6 +10,37 @@ This driver was tested on a limited set of robots (see [Tested with](#tested-wit
 
 ---
 
+## Build Status
+
+<table width="100%">
+    <tr>
+        <th>
+            <a href="https://docs.ros.org/en/jazzy">Jazzy</a>
+        </th>
+        <th>
+            <a href="https://docs.ros.org/en/rolling">Jazzy</a>
+        </th>
+    </tr>
+    <tr>
+        <td>
+            <a href="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/jazzy_main.yml">
+              <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/jazzy_main.yml/badge.svg?branch=main"alt="Jazzy Main"/>
+            </a> <br />
+            <a href="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/jazzy_testing.yml">
+              <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/jazzy_testing.yml/badge.svg?branch=testing"alt="Jazzy Testing"/>
+            </a>
+        </td>
+        <td>
+            <a href="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/rolling_main.yml">
+              <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/rolling_main.yml/badge.svg?branch=main"alt="Rolling Main"/>
+            </a> <br />
+            <a href="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/rolling_testing.yml">
+              <img src="https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver/actions/workflows/rolling_testing.yml/badge.svg?branch=testing"alt="Rolling Testing"/>
+            </a>
+        </td>
+    </tr>
+</table>
+
 ## Packages in the Repository
 
   - `kuka_rsi_driver`: The `ros2_control` hardware interface for communicating with the robot.
