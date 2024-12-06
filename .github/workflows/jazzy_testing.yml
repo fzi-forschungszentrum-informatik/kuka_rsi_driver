@@ -1,0 +1,12 @@
+name: Jazzy build - Testing
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    uses: ./.github/workflows/industrial_ci.yml
+    with:
+      ros_distro: jazzy
+      ros_repo: testing

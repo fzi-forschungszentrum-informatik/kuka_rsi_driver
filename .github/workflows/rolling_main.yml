@@ -1,0 +1,12 @@
+name: Rolling build - Main
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    uses: ./.github/workflows/industrial_ci.yml
+    with:
+      ros_distro: rolling
+      ros_repo: main
