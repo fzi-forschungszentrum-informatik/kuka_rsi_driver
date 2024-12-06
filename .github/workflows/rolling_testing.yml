@@ -1,8 +1,11 @@
 name: Rolling build - Testing
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
+  schedule:
+    - cron: "10 4 * * *"
 
 jobs:
   build:
