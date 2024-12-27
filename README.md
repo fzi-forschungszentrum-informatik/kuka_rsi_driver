@@ -18,7 +18,7 @@ This driver was tested on a limited set of robots (see [Tested with](#tested-wit
             <a href="https://docs.ros.org/en/jazzy">Jazzy</a>
         </th>
         <th>
-            <a href="https://docs.ros.org/en/rolling">Jazzy</a>
+            <a href="https://docs.ros.org/en/rolling">Rolling</a>
         </th>
     </tr>
     <tr>
