@@ -127,9 +127,17 @@ TEST(RsiParser, XmlParser)
   ASSERT_GE(buf.size(), test_xml.size());
   std::memcpy(&buf[0], test_xml.data(), test_xml.size());
 
-  // Verify complete document is parsed
-  parser.parseBuffer(test_xml.size());
-  EXPECT_EQ(cb_i, 6);
+  // Parse buffer multiple times to make sure successive passes work as expected
+  for (std::size_t i = 0; i < 5; ++i)
+  {
+    RCLCPP_INFO(log, "Parsing iteration %zu", i);
+    cb_i = 0;
+
+    // Verify complete document is parsed
+    parser.parseBuffer(test_xml.size());
+    EXPECT_EQ(cb_i, 6);
+  }
+  RCLCPP_INFO(log, "Parsing done");
 }
 
 TEST(RsiParser, ParseTestXml)
@@ -155,38 +163,45 @@ TEST(RsiParser, ParseTestXml)
   ASSERT_GE(buf.size(), test_xml.size());
   std::memcpy(&buf[0], test_xml.data(), test_xml.size());
 
-  const auto rsi_state = rsi_parser.parseBuffer(test_xml.size());
+  // Parse buffer multiple times to make sure successive passes work as expected
+  for (std::size_t i = 0; i < 5; ++i)
+  {
+    RCLCPP_INFO(log, "Parsing iteration %zu", i);
 
-  ASSERT_EQ(rsi_state->axis_actual_pos.size(), 6);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[0], 0.1);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[1], 0.2);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[2], 0.3);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[3], 0.4);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[4], 0.5);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[5], 0.6);
+    const auto rsi_state = rsi_parser.parseBuffer(test_xml.size());
 
-  ASSERT_EQ(rsi_state->axis_setpoint_pos.size(), 6);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[0], 1.0);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[1], 0.9);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[2], 0.8);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[3], 0.7);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[4], 0.6);
-  EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[5], 0.5);
+    ASSERT_EQ(rsi_state->axis_actual_pos.size(), 6);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[0], 0.1);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[1], 0.2);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[2], 0.3);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[3], 0.4);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[4], 0.5);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_actual_pos[5], 0.6);
 
-  EXPECT_EQ(rsi_state->cartesian_actual_pos.x, 1.0);
-  EXPECT_EQ(rsi_state->cartesian_actual_pos.y, 2.0);
-  EXPECT_EQ(rsi_state->cartesian_actual_pos.z, 3.0);
-  EXPECT_EQ(rsi_state->cartesian_actual_pos.a, 0.5);
-  EXPECT_EQ(rsi_state->cartesian_actual_pos.b, 1.0);
-  EXPECT_EQ(rsi_state->cartesian_actual_pos.c, 1.5);
+    ASSERT_EQ(rsi_state->axis_setpoint_pos.size(), 6);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[0], 1.0);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[1], 0.9);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[2], 0.8);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[3], 0.7);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[4], 0.6);
+    EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[5], 0.5);
 
-  EXPECT_EQ(rsi_state->cartesian_setpoint_pos.x, 2.0);
-  EXPECT_EQ(rsi_state->cartesian_setpoint_pos.y, 4.0);
-  EXPECT_EQ(rsi_state->cartesian_setpoint_pos.z, 8.0);
-  EXPECT_EQ(rsi_state->cartesian_setpoint_pos.a, 1.5);
-  EXPECT_EQ(rsi_state->cartesian_setpoint_pos.b, 1.0);
-  EXPECT_EQ(rsi_state->cartesian_setpoint_pos.c, 0.5);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.x, 1.0);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.y, 2.0);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.z, 3.0);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.a, 0.5);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.b, 1.0);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.c, 1.5);
 
-  EXPECT_EQ(rsi_state->delay, 42);
-  EXPECT_EQ(rsi_state->ipoc, 123645634563ul);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.x, 2.0);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.y, 4.0);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.z, 8.0);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.a, 1.5);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.b, 1.0);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.c, 0.5);
+
+    EXPECT_EQ(rsi_state->delay, 42);
+    EXPECT_EQ(rsi_state->ipoc, 123645634563ul);
+  }
+  RCLCPP_INFO(log, "Parsing done");
 }
