@@ -20,5 +20,5 @@ jobs:
         env:
           ROS_DISTRO: ${{ inputs.ros_distro }}
           ROS_REPO: ${{ inputs.ros_repo }}
-          UPSTREAM_WORKSPACE: kuka_rsi_driver.${{ inputs.ros_distro }}.repos -ros2_controllers/admittance_controller
+          UPSTREAM_WORKSPACE: kuka_rsi_driver.${{ inputs.ros_distro }}.repos
           UPSTREAM_CMAKE_ARGS: -DBUILD_TESTING:BOOL=Off
