@@ -38,6 +38,7 @@
 #include "rsi.h"
 #include "rsi_factory.h"
 
+#include <boost/pool/pool.hpp>
 #include <cstdint>
 #include <expat.h>
 #include <functional>
@@ -48,6 +49,61 @@
 #include <vector>
 
 namespace kuka_rsi_driver {
+
+/*! \brief Pool-based memory handler for the RSI xml parser
+ *
+ * Parsing XML requires memory allocations. This class provides a pool-based allocator that can
+ * satisfy these in constant time, making them suitable for real-time contexts. Two memory pools are
+ * used to efficently handle different allocation sizes.
+ */
+class XmlMemoryHandler
+{
+public:
+  /*! \brief Create a new memory handler
+   *
+   * This allocates all the required memory for both memory pools.
+   *
+   * \note This also calls \p activate() after initialization
+   */
+  XmlMemoryHandler();
+
+  /*! \brief Use this memory handler for future \p malloc() invocations
+   */
+  void activate();
+
+  /*! \brief Allocate memory for a given size
+   *
+   * Depending on \p size, the smaller or large pool is selected.
+   *
+   * \throws std::bad_alloc If \p activate() was not called before
+   * \throws std::bad_alloc If \p size is larger than the larger memory pool
+   */
+  static void* malloc(std::size_t size);
+
+  /*! \brief Realloc dummy
+   *
+   * This function does not perform any reallocation and is only provided for completeness.
+   *
+   * \throws std::bad_alloc always
+   */
+  static void* realloc(void* ptr, std::size_t size);
+
+  /*! \brief Free memory allocated by \p malloc()
+   *
+   * If \p ptr is not \p nullptr, the correct memory pool is identified and \p ptr is freed there.
+   *
+   * \throws std::bad_alloc If \p activate() was not called before
+   * \throws std::bad_alloc If \p ptr does not originate from this memory handler
+   */
+  static void free(void* ptr);
+
+private:
+  static XmlMemoryHandler* m_handler;
+
+  using MemoryPool = boost::pool<boost::default_user_allocator_new_delete>;
+  MemoryPool m_pool_small;
+  MemoryPool m_pool_large;
+};
 
 /*! \brief A simplified stream-based XML parser
  *
@@ -127,6 +183,8 @@ private:
 
   std::string m_scope_filter;
 
+  XmlMemoryHandler m_memory_handler;
+  XML_Memory_Handling_Suite m_memory_handling_suite;
   XML_Parser m_parser;
   std::span<char> m_buf;
 

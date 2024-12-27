@@ -64,10 +64,80 @@ T parseNumber(std::string_view str)
 
 namespace kuka_rsi_driver {
 
+XmlMemoryHandler* XmlMemoryHandler::m_handler = nullptr;
+
+XmlMemoryHandler::XmlMemoryHandler()
+  : m_pool_small{128, 128}
+  , m_pool_large{4096, 32}
+{
+  activate();
+}
+
+void XmlMemoryHandler::activate()
+{
+  m_handler = this;
+}
+
+void* XmlMemoryHandler::malloc(std::size_t size)
+{
+  if (!m_handler)
+  {
+    throw std::bad_alloc{};
+  }
+
+  auto& handler = *m_handler;
+  if (size < handler.m_pool_small.get_requested_size())
+  {
+    return handler.m_pool_small.malloc();
+  }
+  else if (size < handler.m_pool_large.get_requested_size())
+  {
+    return handler.m_pool_large.malloc();
+  }
+  else
+  {
+    throw std::bad_alloc{};
+  }
+}
+
+void* XmlMemoryHandler::realloc(void* ptr, std::size_t size)
+{
+  throw std::bad_alloc{};
+}
+
+void XmlMemoryHandler::free(void* ptr)
+{
+  if (!m_handler)
+  {
+    throw std::bad_alloc{};
+  }
+
+  auto& handler = *m_handler;
+  if (!ptr)
+  {
+    return;
+  }
+  else if (handler.m_pool_small.is_from(ptr))
+  {
+    handler.m_pool_small.free(ptr);
+  }
+  else if (handler.m_pool_large.is_from(ptr))
+  {
+    handler.m_pool_large.free(ptr);
+  }
+  else
+  {
+    throw std::bad_alloc{};
+  }
+}
+
 XmlParser::XmlParser(const std::string& scope_filter, rclcpp::Logger log, std::size_t buf_size)
   : m_log{std::move(log)}
   , m_scope_filter{scope_filter}
-  , m_parser{XML_ParserCreate("US-ASCII")}
+  , m_memory_handling_suite{&XmlMemoryHandler::malloc,
+                            &XmlMemoryHandler::realloc,
+                            &XmlMemoryHandler::free}
+  , m_parser{XML_ParserCreate_MM("US-ASCII", &m_memory_handling_suite, NULL)}
 {
   setupParser();
 
