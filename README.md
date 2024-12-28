@@ -49,7 +49,37 @@ This driver was tested on a limited set of robots (see [Tested with](#tested-wit
 
 ## Getting Started
 
-This driver only provides an implementation of the robot realtime communication, but no specific robot support package. Take a look at [the documentation](kuka_rsi_driver/doc/index.rst) for informations on how to get started and integrate it into an existing setup.
+Perform the following steps to get started with this driver:
+
+1. **Clone and build this driver**
+   In addition to this driver, you need to find a robot description for the specific robot model you are using. If you are lucky, somebody already created one and shared it e.g. through kuka_experimental. This description lists the steps for a **KR 5 Arc** robot.
+
+   ```bash
+   sudo apt install python3-vcstool
+   git clone https://github.com/fzi-forschungszentrum-informatik/kuka_rsi_driver.git src/kuka_rsi_driver
+   git clone https://github.com/StoglRobotics-forks/kuka_experimental.git -b rolling_overview src/kuka_experimental
+   vcs import src --skip-existing --input src/kuka_rsi_driver/kuka_rsi_driver.${ROS_DISTRO}.repos
+   rosdep update
+   rosdep install --from-paths src --ignore-src -ry
+   colcon build --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo
+   ```
+
+2. **Setup the robot**
+   Some configuration of the robot is required. The required steps are described in [setup documentation](kuka_rsi_driver/doc/setup.rst), please follow them carefully and verify you can reach the configured robot IP address from your control PC.
+
+   If you want to test the driver without real hardware, a small simulator is provided that can be used instead.
+
+3. **Start the driver**
+   ```bash
+   ros2 launch kuka_rsi_driver test_bringup.launch.py description_package:=kuka_kr5_support description_macro_file:=kr5_arc_macro.xacro macro_name:=kuka_kr5_arc rsi_listen_ip:=<Your host IP address>
+   ```
+
+   If you test the robot in simulation, set `rsi_listen_ip` to `127.0.0.1` and start the simulator:
+   ```bash
+   ros2 run kuka_rsi_driver simulator --host-ip 127.0.0.1
+   ```
+
+Take a look at [the documentation](kuka_rsi_driver/doc/index.rst) for information on how to get started with this driver.
 
 ## Features
 

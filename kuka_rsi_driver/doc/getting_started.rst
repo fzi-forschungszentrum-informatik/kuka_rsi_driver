@@ -11,4 +11,3 @@ This chapter explains how to get started using this driver.
 
    installation
    setup
-   integration
