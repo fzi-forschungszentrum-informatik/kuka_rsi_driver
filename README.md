@@ -52,7 +52,7 @@ This driver was tested on a limited set of robots (see [Tested with](#tested-wit
 Perform the following steps to get started with this driver:
 
 1. **Clone and build this driver**
-   In addition to this driver, you need to find a robot description for the specific robot model you are using. If you are lucky, somebody already created one and shared it e.g. through kuka_experimental. These steps show the steps for a **KR 5 Arc** robot.
+   In addition to this driver, you need to find a robot description for the specific robot model you are using. If you are lucky, somebody already created one and shared it e.g. through kuka_experimental. This description lists the steps for a **KR 5 Arc** robot.
 
    ```bash
    sudo apt install python3-vcstool
