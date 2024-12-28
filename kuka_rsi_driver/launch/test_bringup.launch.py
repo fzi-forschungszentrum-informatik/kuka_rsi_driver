@@ -33,6 +33,7 @@ from launch_ros.parameter_descriptions import ParameterFile
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import (
     LaunchConfiguration,
     Command,
@@ -67,6 +68,17 @@ def generate_launch_description():
         value = declare_launch_arg(name, **kwargs)
         setattr(robot_description_args, name, value)
         return value
+
+    launch_rviz = declare_launch_arg(
+        "launch_rviz", default_value="true", description="Whether to start rviz"
+    )
+    rviz_config_file = declare_launch_arg(
+        "rviz_config_file",
+        default_value=PathJoinSubstitution(
+            [kuka_rsi_driver, "etc", "visualization.rviz"]
+        ),
+        description="Absolute rviz config path to use",
+    )
 
     declare_robot_description_arg(
         "description_package",
@@ -154,6 +166,20 @@ def generate_launch_description():
     )
     launch_description.add_action(
         controller_spawner(["forward_position_controller"], activate=False)
+    )
+
+    #
+    # Start rviz
+    #
+    launch_description.add_action(
+        Node(
+            package="rviz2",
+            executable="rviz2",
+            name="rviz2",
+            output="screen",
+            condition=IfCondition(launch_rviz),
+            arguments=["-d", rviz_config_file],
+        )
     )
 
     return launch_description
