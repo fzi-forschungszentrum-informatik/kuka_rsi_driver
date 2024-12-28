@@ -3,13 +3,6 @@ kuka_rsi_driver
 
 This package provides a [ros2_control](https://control.ros.org) hardware interface for kuka industrial robot arms using the RSI protocol.
 
----
-**NOTE**
-
-This driver only provides a control implementation, but no robot description or other robot specific configuration. This means that you already need a correct model of your robot to be able to use this.
-
----
-
 Interfaces
 ----------
 
