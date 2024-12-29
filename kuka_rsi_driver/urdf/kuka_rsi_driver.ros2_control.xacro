@@ -40,6 +40,14 @@
         <state_interface name="orientation.w"/>
       </sensor>
 
+      <gpio name="${prefix}robot_state">
+        <state_interface name="program_state" />
+      </gpio>
+
+      <gpio name="${prefix}speed_scaling">
+        <state_interface name="speed_scaling_factor" />
+      </gpio>
+
     </ros2_control>
   </xacro:macro>
 

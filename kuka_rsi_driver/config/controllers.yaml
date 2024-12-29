@@ -20,7 +20,7 @@ controller_manager:
 pose_broadcaster:
   ros__parameters:
     frame_id: $(var prefix)base_link
-    pose_name: tcp
+    pose_name: $(var prefix)tcp
 
 joint_trajectory_controller:
   ros__parameters:

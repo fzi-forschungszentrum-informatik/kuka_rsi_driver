@@ -51,9 +51,6 @@ namespace kuka_rsi_driver {
 class KukaRsiHardwareInterface : public hardware_interface::SystemInterface
 {
 public:
-  std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
-  std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
-
   hardware_interface::CallbackReturn
   on_init(const hardware_interface::HardwareInfo& system_info) override;
   hardware_interface::CallbackReturn
@@ -73,16 +70,14 @@ public:
                                         const rclcpp::Duration& period) override;
 
 private:
-  std::string requiredHardwareParameter(const std::string& name);
+  void setState(const RsiState& state);
 
-  std::vector<double> m_joint_positions;
-  std::vector<double> m_joint_commands;
-  std::vector<double> m_joint_efforts;
-
-  std::vector<double> m_cartesian_position;
-
-  double m_program_state;
-  double m_speed_scaling;
+  std::vector<std::string> m_joint_command_pos_ifaces;
+  std::vector<std::string> m_joint_state_pos_ifaces;
+  std::vector<std::string> m_joint_state_eff_ifaces;
+  std::vector<std::string> m_sensor_tcp_state_ifaces;
+  std::string m_gpio_robot_state_iface;
+  std::string m_gpio_speed_scaling_state_iface;
 
   std::optional<RsiFactory> m_rsi_factory;
   std::optional<ControlBuffer> m_control_buf;
