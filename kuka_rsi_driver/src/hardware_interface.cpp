@@ -40,64 +40,31 @@
 #include <limits>
 #include <rclcpp/rclcpp.hpp>
 
+constexpr std::array TCP_SENSOR_STATE_INTERFACES = {"position.x",
+                                                    "position.y",
+                                                    "position.z",
+                                                    "orientation.x",
+                                                    "orientation.y",
+                                                    "orientation.z",
+                                                    "orientation.w"};
+
 namespace kuka_rsi_driver {
 
-std::vector<hardware_interface::StateInterface> KukaRsiHardwareInterface::export_state_interfaces()
-{
-  std::vector<hardware_interface::StateInterface> state_interfaces;
-
-  for (std::size_t i = 0; i < info_.joints.size(); ++i)
-  {
-    state_interfaces.emplace_back(
-      info_.joints[i].name, hardware_interface::HW_IF_POSITION, &m_joint_positions[i]);
-    state_interfaces.emplace_back(
-      info_.joints[i].name, hardware_interface::HW_IF_EFFORT, &m_joint_efforts[i]);
-  }
-
-  constexpr std::array cartesian_states = {"position.x",
-                                           "position.y",
-                                           "position.z",
-                                           "orientation.x",
-                                           "orientation.y",
-                                           "orientation.z",
-                                           "orientation.w"};
-  for (std::size_t i = 0; i < cartesian_states.size(); ++i)
-  {
-    state_interfaces.emplace_back("tcp", cartesian_states[i], &m_cartesian_position[i]);
-  }
-
-  state_interfaces.emplace_back("robot_state", "program_state", &m_program_state);
-  state_interfaces.emplace_back("speed_scaling", "speed_scaling_factor", &m_speed_scaling);
-
-  return state_interfaces;
-}
-
-std::vector<hardware_interface::CommandInterface>
-KukaRsiHardwareInterface::export_command_interfaces()
-{
-  std::vector<hardware_interface::CommandInterface> command_interfaces;
-
-  for (std::size_t i = 0; i < info_.joints.size(); ++i)
-  {
-    command_interfaces.emplace_back(
-      info_.joints[i].name, hardware_interface::HW_IF_POSITION, &m_joint_commands[i]);
-  }
-
-  return command_interfaces;
-}
-
 hardware_interface::CallbackReturn
-KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& /*system_info*/)
+KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
 {
-  m_joint_positions.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
-  m_joint_commands.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
-  m_joint_efforts.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
-
-  m_cartesian_position.resize(7, std::numeric_limits<double>::quiet_NaN());
-
-  for (const auto& joint : info_.joints)
+  if (hardware_interface::SystemInterface::on_init(info) !=
+      hardware_interface::CallbackReturn::SUCCESS)
   {
-    // Verify position command interface
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
+  RCLCPP_DEBUG(get_logger(), "Robot joints:");
+  for (std::size_t i = 0; i < info_.joints.size(); ++i)
+  {
+    const auto& joint = info_.joints[i];
+
+    // Verify joint position command interface
     if (joint.command_interfaces.size() != 1)
     {
       RCLCPP_FATAL(get_logger(),
@@ -115,8 +82,9 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& /*syst
                    hardware_interface::HW_IF_POSITION);
       return hardware_interface::CallbackReturn::ERROR;
     }
+    m_joint_command_pos_ifaces.push_back(joint.name + "/" + joint.command_interfaces[0].name);
 
-    // Verify state interface
+    // Verify joint state interface
     if (joint.state_interfaces.size() != 2)
     {
       RCLCPP_FATAL(get_logger(),
@@ -134,6 +102,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& /*syst
                    hardware_interface::HW_IF_POSITION);
       return hardware_interface::CallbackReturn::ERROR;
     }
+    m_joint_state_pos_ifaces.push_back(joint.name + "/" + joint.state_interfaces[0].name);
     if (joint.state_interfaces[1].name != hardware_interface::HW_IF_EFFORT)
     {
       RCLCPP_FATAL(get_logger(),
@@ -143,7 +112,84 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& /*syst
                    hardware_interface::HW_IF_EFFORT);
       return hardware_interface::CallbackReturn::ERROR;
     }
+    m_joint_state_eff_ifaces.push_back(joint.name + "/" + joint.state_interfaces[1].name);
+
+    RCLCPP_DEBUG(get_logger(), "  - %zu: %s", i, joint.name.c_str());
   }
+
+  // Verify sensors
+  if (info_.sensors.size() != 1)
+  {
+    RCLCPP_FATAL(get_logger(), "Expected 1 sensor element, but found %zu", info_.sensors.size());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
+  // Verify TCP sensor
+  if (!info_.sensors[0].command_interfaces.empty())
+  {
+    RCLCPP_FATAL(get_logger(),
+                 "Sensor '%s' (tcp) should have no command interfaces, but found %zu",
+                 info_.sensors[0].name.c_str(),
+                 info_.sensors[0].command_interfaces.size());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+  if (info_.sensors[0].state_interfaces.size() != TCP_SENSOR_STATE_INTERFACES.size())
+  {
+    RCLCPP_FATAL(get_logger(),
+                 "Sensor '%s' (tcp) should have %zu state interfaces, but found %zu",
+                 info_.sensors[0].name.c_str(),
+                 TCP_SENSOR_STATE_INTERFACES.size(),
+                 info_.sensors[0].state_interfaces.size());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+  RCLCPP_DEBUG(get_logger(), "TCP sensor '%s' state interfaces:", info_.sensors[0].name.c_str());
+  for (std::size_t i = 0; i < info_.sensors[0].state_interfaces.size(); ++i)
+  {
+    RCLCPP_DEBUG(get_logger(),
+                 "  - %zu: %s (%s)",
+                 i,
+                 info_.sensors[0].state_interfaces[i].name.c_str(),
+                 TCP_SENSOR_STATE_INTERFACES[i]);
+    m_sensor_tcp_state_ifaces.push_back(info_.sensors[0].name + "/" +
+                                        info_.sensors[0].state_interfaces[i].name);
+  }
+
+  // Verify gpios
+  if (info_.gpios.size() != 2)
+  {
+    RCLCPP_FATAL(get_logger(), "Expected 2 gpio elements, but found %zu", info_.gpios.size());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+
+  // Verify robot state
+  if (!info_.gpios[0].command_interfaces.empty() || (info_.gpios[0].state_interfaces.size() != 1))
+  {
+    RCLCPP_FATAL(get_logger(),
+                 "GPIO '%s' (robot state) should provide one state interface, but found %zu state "
+                 "interfaces and %zu command interfaces",
+                 info_.gpios[0].name.c_str(),
+                 info_.gpios[0].state_interfaces.size(),
+                 info_.gpios[0].command_interfaces.size());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+  m_gpio_robot_state_iface = info_.gpios[0].name + "/" + info_.gpios[0].state_interfaces[0].name;
+  RCLCPP_DEBUG(get_logger(), "Robot state interface: %s", m_gpio_robot_state_iface.c_str());
+
+  // Verify speed scaling
+  if (!info_.gpios[1].command_interfaces.empty() || (info_.gpios[1].state_interfaces.size() != 1))
+  {
+    RCLCPP_FATAL(get_logger(),
+                 "GPIO '%s' (speed scaling) should provide one state interface, but found %zu "
+                 "state interfaces and %zu command interfaces",
+                 info_.gpios[1].name.c_str(),
+                 info_.gpios[1].state_interfaces.size(),
+                 info_.gpios[1].command_interfaces.size());
+    return hardware_interface::CallbackReturn::ERROR;
+  }
+  m_gpio_speed_scaling_state_iface =
+    info_.gpios[1].name + "/" + info_.gpios[1].state_interfaces[0].name;
+  RCLCPP_DEBUG(
+    get_logger(), "Speed scaling state interface: %s", m_gpio_speed_scaling_state_iface.c_str());
 
   m_rsi_factory.emplace();
   m_control_buf.emplace(*m_rsi_factory);
@@ -203,24 +249,11 @@ KukaRsiHardwareInterface::on_configure(const rclcpp_lifecycle::State& previous_s
 
     if (const auto state = m_control_buf->popStates(); state)
     {
-      for (std::size_t i = 0; i < m_joint_positions.size(); ++i)
+      setState(*state);
+      for (std::size_t i = 0; i < state->axis_actual_pos.size(); ++i)
       {
-        m_joint_positions[i] = state->axis_actual_pos[i] * M_PI / 180.;
-        m_joint_efforts[i]   = state->axis_eff[i];
-        m_joint_commands[i]  = m_joint_positions[i];
+        set_command(m_joint_command_pos_ifaces[i], state->axis_actual_pos[i] * M_PI / 180.);
       }
-
-      m_cartesian_position[0] = state->cartesian_actual_pos.x / 1000;
-      m_cartesian_position[1] = state->cartesian_actual_pos.y / 1000;
-      m_cartesian_position[2] = state->cartesian_actual_pos.z / 1000;
-
-      state->cartesian_actual_pos.getQuaternion(m_cartesian_position[3],
-                                                m_cartesian_position[4],
-                                                m_cartesian_position[5],
-                                                m_cartesian_position[6]);
-
-      m_program_state = static_cast<double>(state->program_status);
-      m_speed_scaling = state->speed_scaling / 100;
 
       m_control_buf->zeroOffsets();
 
@@ -257,30 +290,7 @@ hardware_interface::return_type KukaRsiHardwareInterface::read(const rclcpp::Tim
 
   if (const auto state = m_control_buf->popStates(); state)
   {
-    for (std::size_t i = 0; i < m_joint_positions.size(); ++i)
-    {
-      m_joint_positions[i] = state->axis_actual_pos[i] * M_PI / 180.;
-      m_joint_efforts[i]   = state->axis_eff[i];
-    }
-
-    m_cartesian_position[0] = state->cartesian_actual_pos.x / 1000;
-    m_cartesian_position[1] = state->cartesian_actual_pos.y / 1000;
-    m_cartesian_position[2] = state->cartesian_actual_pos.z / 1000;
-
-    state->cartesian_actual_pos.getQuaternion(m_cartesian_position[3],
-                                              m_cartesian_position[4],
-                                              m_cartesian_position[5],
-                                              m_cartesian_position[6]);
-
-    m_program_state = static_cast<double>(state->program_status);
-    if (state->program_status == ProgramStatus::RUNNING)
-    {
-      m_speed_scaling = state->speed_scaling / 100;
-    }
-    else
-    {
-      m_speed_scaling = 0;
-    }
+    setState(*state);
   }
 
   return hardware_interface::return_type::OK;
@@ -302,9 +312,9 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
 
   if (current_state == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)
   {
-    for (std::size_t i = 0; i < m_joint_commands.size(); ++i)
+    for (std::size_t i = 0; i < m_joint_command_pos_ifaces.size(); ++i)
     {
-      cmd->axis_command_pos[i] = m_joint_commands[i] * 180. / M_PI;
+      cmd->axis_command_pos[i] = get_command(m_joint_command_pos_ifaces[i]) * 180. / M_PI;
     }
   }
 
@@ -320,6 +330,39 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
   }
 
   return hardware_interface::return_type::OK;
+}
+
+void KukaRsiHardwareInterface::setState(const RsiState& state)
+{
+  // Joint states
+  for (std::size_t i = 0; i < state.axis_actual_pos.size(); ++i)
+  {
+    set_state(m_joint_state_pos_ifaces[i], state.axis_actual_pos[i] * M_PI / 180.);
+    set_state(m_joint_state_eff_ifaces[i], state.axis_eff[i]);
+  }
+
+  // TCP
+  set_state(m_sensor_tcp_state_ifaces[0], state.cartesian_actual_pos.x / 1000);
+  set_state(m_sensor_tcp_state_ifaces[1], state.cartesian_actual_pos.y / 1000);
+  set_state(m_sensor_tcp_state_ifaces[2], state.cartesian_actual_pos.z / 1000);
+
+  std::array<double, 4> tcp_rpy;
+  state.cartesian_actual_pos.getQuaternion(tcp_rpy[0], tcp_rpy[1], tcp_rpy[2], tcp_rpy[3]);
+  for (std::size_t i = 0; i < tcp_rpy.size(); ++i)
+  {
+    set_state(m_sensor_tcp_state_ifaces[i + 3], tcp_rpy[i]);
+  }
+
+  // Robot state
+  set_state(m_gpio_robot_state_iface, static_cast<double>(state.program_status));
+  if (state.program_status == ProgramStatus::RUNNING)
+  {
+    set_state(m_gpio_speed_scaling_state_iface, state.speed_scaling / 100);
+  }
+  else
+  {
+    set_state(m_gpio_speed_scaling_state_iface, 0.0);
+  }
 }
 
 } // namespace kuka_rsi_driver
