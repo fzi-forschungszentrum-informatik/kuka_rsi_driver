@@ -59,7 +59,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
     return hardware_interface::CallbackReturn::ERROR;
   }
 
-  RCLCPP_INFO(get_logger(), "Robot joints:");
+  RCLCPP_DEBUG(get_logger(), "Robot joints:");
   for (std::size_t i = 0; i < info_.joints.size(); ++i)
   {
     const auto& joint = info_.joints[i];
@@ -114,7 +114,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
     }
     m_joint_state_eff_ifaces.push_back(joint.name + "/" + joint.state_interfaces[1].name);
 
-    RCLCPP_INFO(get_logger(), "  - %zu: %s", i, joint.name.c_str());
+    RCLCPP_DEBUG(get_logger(), "  - %zu: %s", i, joint.name.c_str());
   }
 
   // Verify sensors
@@ -131,6 +131,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
                  "Sensor '%s' (tcp) should have no command interfaces, but found %zu",
                  info_.sensors[0].name.c_str(),
                  info_.sensors[0].command_interfaces.size());
+    return hardware_interface::CallbackReturn::ERROR;
   }
   if (info_.sensors[0].state_interfaces.size() != TCP_SENSOR_STATE_INTERFACES.size())
   {
@@ -139,15 +140,16 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
                  info_.sensors[0].name.c_str(),
                  TCP_SENSOR_STATE_INTERFACES.size(),
                  info_.sensors[0].state_interfaces.size());
+    return hardware_interface::CallbackReturn::ERROR;
   }
-  RCLCPP_INFO(get_logger(), "TCP sensor '%s' state interfaces:", info_.sensors[0].name.c_str());
+  RCLCPP_DEBUG(get_logger(), "TCP sensor '%s' state interfaces:", info_.sensors[0].name.c_str());
   for (std::size_t i = 0; i < info_.sensors[0].state_interfaces.size(); ++i)
   {
-    RCLCPP_INFO(get_logger(),
-                "  - %zu: %s (%s)",
-                i,
-                info_.sensors[0].state_interfaces[i].name.c_str(),
-                TCP_SENSOR_STATE_INTERFACES[i]);
+    RCLCPP_DEBUG(get_logger(),
+                 "  - %zu: %s (%s)",
+                 i,
+                 info_.sensors[0].state_interfaces[i].name.c_str(),
+                 TCP_SENSOR_STATE_INTERFACES[i]);
     m_sensor_tcp_state_ifaces.push_back(info_.sensors[0].name + "/" +
                                         info_.sensors[0].state_interfaces[i].name);
   }
@@ -171,7 +173,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
     return hardware_interface::CallbackReturn::ERROR;
   }
   m_gpio_robot_state_iface = info_.gpios[0].name + "/" + info_.gpios[0].state_interfaces[0].name;
-  RCLCPP_INFO(get_logger(), "Robot state interface: %s", m_gpio_robot_state_iface.c_str());
+  RCLCPP_DEBUG(get_logger(), "Robot state interface: %s", m_gpio_robot_state_iface.c_str());
 
   // Verify speed scaling
   if (!info_.gpios[1].command_interfaces.empty() || (info_.gpios[1].state_interfaces.size() != 1))
@@ -186,7 +188,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
   }
   m_gpio_speed_scaling_state_iface =
     info_.gpios[1].name + "/" + info_.gpios[1].state_interfaces[0].name;
-  RCLCPP_INFO(
+  RCLCPP_DEBUG(
     get_logger(), "Speed scaling state interface: %s", m_gpio_speed_scaling_state_iface.c_str());
 
   m_rsi_factory.emplace();
