@@ -22,6 +22,10 @@ pose_broadcaster:
     frame_id: $(var prefix)base_link
     pose_name: $(var prefix)tcp
 
+status_broadcaster:
+  ros__parameters:
+    prefix: $(var prefix)
+
 joint_trajectory_controller:
   ros__parameters:
     joints:

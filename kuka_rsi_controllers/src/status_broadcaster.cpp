@@ -48,8 +48,8 @@ StatusBroadcaster::state_interface_configuration() const
 {
   controller_interface::InterfaceConfiguration result{};
   result.type = controller_interface::interface_configuration_type::INDIVIDUAL;
-  result.names.push_back("robot_state/program_state");
-  result.names.push_back("speed_scaling/speed_scaling_factor");
+  result.names.push_back(m_prefix + "robot_state/program_state");
+  result.names.push_back(m_prefix + "speed_scaling/speed_scaling_factor");
 
   return result;
 }
@@ -83,6 +83,8 @@ StatusBroadcaster::on_configure(const rclcpp_lifecycle::State& previous_state)
 {
   try
   {
+    m_prefix = auto_declare("prefix", "");
+
     const auto robot_state_pub = get_node()->create_publisher<kuka_rsi_interfaces::msg::RobotState>(
       "~/robot_state", rclcpp::SystemDefaultsQoS());
     m_robot_state_pub =
