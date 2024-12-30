@@ -136,10 +136,9 @@ ament_python_install_package(
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   find_package(ament_cmake_gtest REQUIRED)
+  find_package(launch_testing_ament_cmake REQUIRED)
 
-  set(ament_cmake_cpplint_FOUND TRUE)
-  set(ament_cmake_uncrustify_FOUND TRUE)
-
+  # Unit tests
   ament_add_gtest(kuka_rsi_driver_test
     test/control_buffer.cpp
     test/rsi_parser.cpp
@@ -149,8 +148,14 @@ if(BUILD_TESTING)
     kuka_rsi_driver
   )
 
-  set(AMENT_LINT_AUTO_FILE_EXCLUDE doc/conf.py)
+  # Integration tests
+  add_launch_test(
+    test/move_sim.py
+  )
 
+  set(AMENT_LINT_AUTO_FILE_EXCLUDE doc/conf.py)
+  set(ament_cmake_cpplint_FOUND TRUE)
+  set(ament_cmake_uncrustify_FOUND TRUE)
   set(ament_cmake_flake8_FOUND TRUE)
   set(ament_cmake_xmllint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
