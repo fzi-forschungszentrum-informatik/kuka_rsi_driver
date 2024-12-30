@@ -24,7 +24,7 @@ pose_broadcaster:
 
 status_broadcaster:
   ros__parameters:
-    prefix: $(var prefix)
+    prefix: "$(var prefix)"
 
 joint_trajectory_controller:
   ros__parameters:
