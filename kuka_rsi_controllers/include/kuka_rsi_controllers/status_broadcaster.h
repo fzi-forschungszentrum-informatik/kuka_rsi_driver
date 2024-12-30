@@ -64,6 +64,8 @@ public:
   on_deactivate(const rclcpp_lifecycle::State& previous_state) override;
 
 private:
+  std::string m_prefix;
+
   std::unique_ptr<realtime_tools::RealtimePublisher<kuka_rsi_interfaces::msg::RobotState>>
     m_robot_state_pub;
   std::unique_ptr<realtime_tools::RealtimePublisher<std_msgs::msg::Float64>> m_speed_scaling_pub;
