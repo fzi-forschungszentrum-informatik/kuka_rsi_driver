@@ -40,6 +40,9 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>controller_manager_msgs</test_depend>
+  <test_depend>kuka_kr5_support</test_depend>
+  <test_depend>kuka_kr120_support</test_depend>
+  <test_depend>kuka_kr210_support</test_depend>
   <test_depend>launch_testing_ament_cmake</test_depend>
 
   <export>

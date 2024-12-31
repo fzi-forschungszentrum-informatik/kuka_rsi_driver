@@ -27,8 +27,11 @@
 # POSSIBILITY OF SUCH DAMAGE.
 import time
 import unittest
+import itertools
+import pytest
 import rclpy
 import rclpy.node
+import launch_testing
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -43,7 +46,19 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 
 
-def generate_test_description():
+@pytest.mark.launch_test
+@launch_testing.parametrize(
+    "prefix,robot_model",
+    itertools.product(
+        ["", "prefix_"],
+        [
+            ("kuka_kr5_support", "kr5_arc_macro.xacro", "kuka_kr5_arc"),
+            ("kuka_kr120_support", "kr120r2500pro_macro.xacro", "kuka_kr120r2500pro"),
+            ("kuka_kr210_support", "kr210r3100_macro.xacro", "kuka_kr210r3100"),
+        ],
+    ),
+)
+def generate_test_description(prefix, robot_model):
     kuka_rsi_driver = FindPackageShare("kuka_rsi_driver")
 
     test_description = LaunchDescription()
@@ -58,10 +73,11 @@ def generate_test_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(robot_driver_launch),
             launch_arguments={
-                "description_package": "kuka_kr5_support",
-                "description_macro_file": "kr5_arc_macro.xacro",
-                "macro_name": "kuka_kr5_arc",
+                "description_package": robot_model[0],
+                "description_macro_file": robot_model[1],
+                "macro_name": robot_model[2],
                 "launch_rviz": "False",
+                "prefix": prefix,
             }.items(),
         )
     )
