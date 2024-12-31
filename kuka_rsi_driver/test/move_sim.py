@@ -122,7 +122,7 @@ class MoveSimTest(unittest.TestCase):
         )
         self.assertIsNotNone(list_controllers_client)
 
-        # Test result multiple times, as driver could still be starting up
+        # Wait until all controllers are loaded
         for _ in range(5):
             res = _call_service(
                 self.node, list_controllers_client, ListControllers.Request()
@@ -136,13 +136,28 @@ class MoveSimTest(unittest.TestCase):
 
             time.sleep(1)
 
-        controllers_active = [c.name for c in res.controller if c.state == "active"]
-        self.assertSetEqual(set(expected_controllers_active), set(controllers_active))
+        # Verify controller activations
+        for _ in range(5):
+            # Check controllers
+            controllers_active = [c.name for c in res.controller if c.state == "active"]
+            controllers_inactive = [
+                c.name for c in res.controller if c.state == "inactive"
+            ]
 
-        controllers_inactive = [c.name for c in res.controller if c.state == "inactive"]
-        self.assertSetEqual(
-            set(expected_controllers_inactive), set(controllers_inactive)
-        )
+            if (set(controllers_active) == set(expected_controllers_active)) and (
+                set(controllers_inactive) == set(expected_controllers_inactive)
+            ):
+                return
+
+            # Spawners are not yet done, so wait and retry
+            time.sleep(1)
+
+            res = _call_service(
+                self.node, list_controllers_client, ListControllers.Request()
+            )
+
+        # Previous calls did not show controller activation success => Fail
+        self.fail()
 
 
 def _wait_for_service(node, srv_name, srv_type, timeout=10):
