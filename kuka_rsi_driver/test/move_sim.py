@@ -101,20 +101,39 @@ def generate_test_description(prefix, robot_model):
 
 
 class MoveSimTest(unittest.TestCase):
+    MOTION_CONTROLLERS = ["joint_trajectory_controller", "forward_position_controller"]
+
     @classmethod
     def setUpClass(cls):
         rclpy.init()
         cls.node = rclpy.node.Node("kuka_rsi_driver_test")
+        cls.controller_manager_interface = ControllerManagerInterface(cls.node)
+
+        # Wait until spawners are done
+        cls._wait_for_spawners(cls)
 
     @classmethod
     def tearDownClass(cls):
         cls.node.destroy_node()
         rclpy.shutdown()
 
-    def setUp(self):
-        self.controller_manager_interface = ControllerManagerInterface(self.node)
+    def test_activate_joint_trajectory_controller(self):
+        self.controller_manager_interface.switch_controller(
+            deactivate=self.MOTION_CONTROLLERS, strict=False
+        )
+        self.controller_manager_interface.switch_controller(
+            activate=["joint_trajectory_controller"], strict=True
+        )
 
-    def test_controllers_loaded(self):
+    def test_activate_forward_position_controller(self):
+        self.controller_manager_interface.switch_controller(
+            deactivate=self.MOTION_CONTROLLERS, strict=False
+        )
+        self.controller_manager_interface.switch_controller(
+            activate=["forward_position_controller"], strict=True
+        )
+
+    def _wait_for_spawners(self):
         expected_controllers_active = [
             "joint_state_broadcaster",
             "pose_broadcaster",
@@ -124,7 +143,7 @@ class MoveSimTest(unittest.TestCase):
         expected_controllers_inactive = ["forward_position_controller"]
 
         # Wait until all controllers are loaded
-        for _ in range(5):
+        for _ in range(10):
             controllers = self.controller_manager_interface.list_controllers()
 
             if len(controllers) == (

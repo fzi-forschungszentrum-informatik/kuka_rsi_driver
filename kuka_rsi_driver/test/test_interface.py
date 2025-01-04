@@ -27,7 +27,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 import rclpy
 
-from controller_manager_msgs.srv import ListControllers
+from controller_manager_msgs.srv import ListControllers, SwitchController
 
 
 class ControllerManagerInterface:
@@ -37,6 +37,9 @@ class ControllerManagerInterface:
 
         self._list_controllers_client = wait_for_service(
             "controller_manager/list_controllers", ListControllers, node, 10, self._log
+        )
+        self._switch_controllers_client = wait_for_service(
+            "controller_manager/switch_controller", SwitchController, node, 3, self._log
         )
 
     def list_controllers(self):
@@ -57,6 +60,31 @@ class ControllerManagerInterface:
             self._log.info("Controllers: []")
 
         return res.controller
+
+    def switch_controller(self, activate=[], deactivate=[], strict=True):
+        request = SwitchController.Request(
+            activate_controllers=activate,
+            deactivate_controllers=deactivate,
+            strictness=(
+                SwitchController.Request.STRICT
+                if strict
+                else SwitchController.Request.BEST_EFFORT
+            ),
+        )
+        res = call_service(
+            self._switch_controllers_client, request, self._node, self._log
+        )
+
+        if not res.ok:
+            error_msg = "Could not switch controllers"
+            self._log.error(error_msg)
+            raise RuntimeError(error_msg)
+
+        self._log.info(
+            f"Switched controllers ({'strict' if strict else 'best_effort'}):"
+        )
+        self._log.info(f"  - Activate: {activate}")
+        self._log.info(f"  - Deactivate: {deactivate}")
 
 
 def wait_for_service(srv_name, srv_type, node, timeout=10, log=None):
