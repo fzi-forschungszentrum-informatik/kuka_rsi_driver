@@ -40,15 +40,13 @@ from launch_ros.substitutions import FindPackageShare
 
 from launch_testing.actions import ReadyToTest
 
-from controller_manager_msgs.srv import ListControllers
-
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 
 sys.path.append(os.path.dirname(__file__))
-from test_interface import wait_for_service, call_service
+from test_interface import ControllerManagerInterface
 
 
 @pytest.mark.launch_test
@@ -113,6 +111,9 @@ class MoveSimTest(unittest.TestCase):
         cls.node.destroy_node()
         rclpy.shutdown()
 
+    def setUp(self):
+        self.controller_manager_interface = ControllerManagerInterface(self.node)
+
     def test_controllers_loaded(self):
         expected_controllers_active = [
             "joint_state_broadcaster",
@@ -122,22 +123,11 @@ class MoveSimTest(unittest.TestCase):
         ]
         expected_controllers_inactive = ["forward_position_controller"]
 
-        list_controllers_client = wait_for_service(
-            "controller_manager/list_controllers",
-            ListControllers,
-            self.node,
-            10,
-        )
-        self.assertIsNotNone(list_controllers_client)
-
         # Wait until all controllers are loaded
         for _ in range(5):
-            res = call_service(
-                list_controllers_client, ListControllers.Request(), self.node
-            )
-            self.assertIsNotNone(res)
+            controllers = self.controller_manager_interface.list_controllers()
 
-            if len(res.controller) == (
+            if len(controllers) == (
                 len(expected_controllers_active) + len(expected_controllers_inactive)
             ):
                 break
@@ -147,9 +137,9 @@ class MoveSimTest(unittest.TestCase):
         # Verify controller activations
         for _ in range(5):
             # Check controllers
-            controllers_active = [c.name for c in res.controller if c.state == "active"]
+            controllers_active = [c.name for c in controllers if c.state == "active"]
             controllers_inactive = [
-                c.name for c in res.controller if c.state == "inactive"
+                c.name for c in controllers if c.state == "inactive"
             ]
 
             if (set(controllers_active) == set(expected_controllers_active)) and (
@@ -159,10 +149,7 @@ class MoveSimTest(unittest.TestCase):
 
             # Spawners are not yet done, so wait and retry
             time.sleep(1)
-
-            res = _call_service(
-                self.node, list_controllers_client, ListControllers.Request()
-            )
+            controllers = self.controller_manager_interface.list_controllers()
 
         # Previous calls did not show controller activation success => Fail
         self.fail()

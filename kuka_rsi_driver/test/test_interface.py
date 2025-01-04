@@ -27,6 +27,37 @@
 # POSSIBILITY OF SUCH DAMAGE.
 import rclpy
 
+from controller_manager_msgs.srv import ListControllers
+
+
+class ControllerManagerInterface:
+    def __init__(self, node):
+        self._node = node
+        self._log = node.get_logger().get_child("controller_manager_interface")
+
+        self._list_controllers_client = wait_for_service(
+            "controller_manager/list_controllers", ListControllers, node, 10, self._log
+        )
+
+    def list_controllers(self):
+        res = call_service(
+            self._list_controllers_client,
+            ListControllers.Request(),
+            self._node,
+            self._log,
+        )
+
+        if len(res.controller) > 0:
+            self._log.info("Controllers:")
+            for controller in res.controller:
+                self._log.info(
+                    f"  - {controller.name} ({controller.type}) - {controller.state}"
+                )
+        else:
+            self._log.info("Controllers: []")
+
+        return res.controller
+
 
 def wait_for_service(srv_name, srv_type, node, timeout=10, log=None):
     if log is None:
@@ -36,10 +67,11 @@ def wait_for_service(srv_name, srv_type, node, timeout=10, log=None):
 
     log.info(f"Waiting for service '{srv_name}' (timeout: {timeout:.2f}s)...")
     if not client.wait_for_service(timeout):
-        log.error(
-            f"  Could not reach service '{srv_name}' within timeout {timeout:.2f}s"
+        error_msg = (
+            f"Could not reach service '{srv_name}' within timeout {timeout:.2f}s"
         )
-        return None
+        log.error(f"  {error_msg}")
+        raise RuntimeError(error_msg)
 
     log.info(f"  Successfully waited for service '{srv_name}'")
     return client
@@ -54,8 +86,9 @@ def call_service(client, request, node, log=None):
 
     rclpy.spin_until_future_complete(node, future)
     if future.result() is None:
-        log.error(f"  Could not call service '{client.srv_name}': {future.exception()}")
-        return None
+        error_msg = f"Could not call service '{client.srv_name}': {future.exception()}"
+        log.error(f"  {error_msg}")
+        raise RuntimeError(error_msg)
 
     log.info(f"  Received result: {future.result()}")
     return future.result()
