@@ -35,6 +35,11 @@ import rclpy
 import rclpy.node
 import launch_testing
 
+from builtin_interfaces.msg import Duration
+from sensor_msgs.msg import JointState
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from control_msgs.action import FollowJointTrajectory
+
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -46,7 +51,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 
 sys.path.append(os.path.dirname(__file__))
-from test_interface import ControllerManagerInterface
+from test_interface import ControllerManagerInterface, ActionInterface
 
 
 @pytest.mark.launch_test
@@ -132,6 +137,76 @@ class MoveSimTest(unittest.TestCase):
         self.controller_manager_interface.switch_controller(
             activate=["forward_position_controller"], strict=True
         )
+
+    def test_move_jtc(self, prefix):
+        # Make sure jtc is active
+        self.controller_manager_interface.switch_controller(
+            deactivate=self.MOTION_CONTROLLERS, strict=False
+        )
+        self.controller_manager_interface.switch_controller(
+            activate=["joint_trajectory_controller"], strict=True
+        )
+
+        # Create dummy trajectory
+        joint_names = [f"{prefix}joint_a{i+1}" for i in range(6)]
+        test_points = [
+            (Duration(sec=2, nanosec=0), [0.0 for j in joint_names]),
+            (Duration(sec=4, nanosec=0), [-1.0 for j in joint_names]),
+            (Duration(sec=8, nanosec=0), [1.0 for j in joint_names]),
+        ]
+        test_trajectory = JointTrajectory(
+            joint_names=joint_names,
+            points=[
+                JointTrajectoryPoint(positions=pos, time_from_start=time)
+                for (time, pos) in test_points
+            ],
+        )
+
+        # Send goal to jtc
+        follow_joint_trajectory_client = ActionInterface(
+            "joint_trajectory_controller/follow_joint_trajectory",
+            FollowJointTrajectory,
+            self.node,
+            3,
+        )
+        result = follow_joint_trajectory_client.send_goal(
+            FollowJointTrajectory.Goal(trajectory=test_trajectory), timeout=9
+        )
+        self.assertEqual(result.error_code, FollowJointTrajectory.Result.SUCCESSFUL)
+
+        # Verify joint state
+        joint_state = self._subscribe_once("/joint_states", JointState, 3)
+
+        expected_state = test_points[-1][1]
+        for i, joint_name in enumerate(joint_names):
+            joint_i = joint_state.name.index(joint_name)
+            self.assertLess(
+                abs(expected_state[i] - joint_state.position[joint_i]), 0.01
+            )
+
+    def _subscribe_once(self, topic, topic_type, timeout=10):
+        # Create subscriber
+        last_msg = None
+
+        def msg_cb(msg):
+            nonlocal last_msg
+            last_msg = msg
+
+        subscription = self.node.create_subscription(JointState, topic, msg_cb, 1)
+
+        # Spin until receiving msg
+        self.node.get_logger().info(
+            f"Waiting for message on topic {topic} ({topic_type.__name__}) for {timeout:.2f}s"
+        )
+        spin_start = time.time()
+        while (last_msg is None) and (time.time() < (spin_start + timeout)):
+            rclpy.spin_once(self.node, timeout_sec=0.1)
+        self.assertIsNotNone(last_msg)
+        self.node.get_logger().info(f"  Received message: {last_msg}")
+
+        # Cleanup
+        subscription.destroy()
+        return last_msg
 
     def _wait_for_spawners(self):
         expected_controllers_active = [

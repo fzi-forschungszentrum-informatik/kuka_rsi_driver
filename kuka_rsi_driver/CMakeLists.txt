@@ -151,6 +151,7 @@ if(BUILD_TESTING)
   # Integration tests
   add_launch_test(
     test/move_sim.py
+      TIMEOUT 200
   )
 
   set(AMENT_LINT_AUTO_FILE_EXCLUDE doc/conf.py)

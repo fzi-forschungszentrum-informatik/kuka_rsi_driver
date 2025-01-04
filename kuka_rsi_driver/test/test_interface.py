@@ -26,8 +26,10 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 import rclpy
+from rclpy.action import ActionClient
 
 from controller_manager_msgs.srv import ListControllers, SwitchController
+from action_msgs.msg import GoalStatus
 
 
 class ControllerManagerInterface:
@@ -87,6 +89,64 @@ class ControllerManagerInterface:
         self._log.info(f"  - Deactivate: {deactivate}")
 
 
+class ActionInterface:
+    def __init__(self, action_name, action_type, node, timeout=10):
+        self._node = node
+        self._log = node.get_logger().get_child(action_name.split("/")[-1])
+
+        self._client = wait_for_action(
+            action_name, action_type, self._node, timeout, self._log
+        )
+
+    def send_goal(self, goal, timeout=10):
+        # Send goal
+        self._log.info(f"Sending goal to action server: {goal}")
+        goal_future = self._client.send_goal_async(goal)
+
+        self._log.info("  Waiting for goal acceptance")
+        rclpy.spin_until_future_complete(self._node, goal_future)
+
+        # Get goal handle
+        if goal_future.result() is None:
+            error_msg = (
+                f"Could not send goal to action server: {goal_future.exception()}"
+            )
+            self._log.error(f"  {error_msg}")
+            raise RuntimeError(error_msg)
+
+        goal_handle = goal_future.result()
+        if not goal_handle.accepted:
+            error_msg = "  Goal was not accepted"
+            self._log.error(f"  {error_msg}")
+            raise RuntimeError(error_msg)
+
+        uuid_str = "".join([f"{v:02x}" for v in goal_handle.goal_id.uuid])
+        self._log.info(f"  Goal {uuid_str} accepted")
+
+        # Wait for result
+        result_future = goal_handle.get_result_async()
+
+        self._log.info(f"  Waiting {timeout:.2f}s for result")
+        rclpy.spin_until_future_complete(self._node, result_future, timeout_sec=timeout)
+
+        # Check result
+        response = result_future.result()
+        if response is None:
+            error_msg = (
+                f"  Could not get result from action: {result_future.exception()}"
+            )
+        elif response.status != GoalStatus.STATUS_SUCCEEDED:
+            error_msg = (
+                f"  Goal did not succeed (status={response.status}): {response.result}"
+            )
+        else:
+            self._log.info(f"  Received result: {response.result}")
+            return response.result
+
+        self._log.error(f"  {error_msg}")
+        raise RuntimeError(error_msg)
+
+
 def wait_for_service(srv_name, srv_type, node, timeout=10, log=None):
     if log is None:
         log = node.get_logger()
@@ -120,3 +180,19 @@ def call_service(client, request, node, log=None):
 
     log.info(f"  Received result: {future.result()}")
     return future.result()
+
+
+def wait_for_action(action_name, action_type, node, timeout=10, log=None):
+    if log is None:
+        log = node.get_logger()
+
+    client = ActionClient(node, action_type, action_name)
+
+    log.info(f"Waiting for action '{action_name}' (timeout: {timeout:.2f}s)...")
+    if not client.wait_for_server(timeout):
+        error_msg = f"Could not reach action server '{action_name}' within timeout {timeout:.2f}s"
+        log.error(f"  {error_msg}")
+        raise RuntimeError(error_msg)
+
+    log.info(f"  Successfully waited for action server '{action_name}'")
+    return client
