@@ -25,9 +25,11 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+import sys
 import time
 import unittest
 import itertools
+import os
 import pytest
 import rclpy
 import rclpy.node
@@ -44,6 +46,9 @@ from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
+
+sys.path.append(os.path.dirname(__file__))
+from test_interface import wait_for_service, call_service
 
 
 @pytest.mark.launch_test
@@ -117,15 +122,18 @@ class MoveSimTest(unittest.TestCase):
         ]
         expected_controllers_inactive = ["forward_position_controller"]
 
-        list_controllers_client = _wait_for_service(
-            self.node, "controller_manager/list_controllers", ListControllers, 10
+        list_controllers_client = wait_for_service(
+            "controller_manager/list_controllers",
+            ListControllers,
+            self.node,
+            10,
         )
         self.assertIsNotNone(list_controllers_client)
 
         # Wait until all controllers are loaded
         for _ in range(5):
-            res = _call_service(
-                self.node, list_controllers_client, ListControllers.Request()
+            res = call_service(
+                list_controllers_client, ListControllers.Request(), self.node
             )
             self.assertIsNotNone(res)
 
@@ -158,36 +166,3 @@ class MoveSimTest(unittest.TestCase):
 
         # Previous calls did not show controller activation success => Fail
         self.fail()
-
-
-def _wait_for_service(node, srv_name, srv_type, timeout=10):
-    client = node.create_client(srv_type, srv_name)
-
-    node.get_logger().info(
-        f"Waiting for service '{srv_name}' (timeout: {timeout:.2f}s)..."
-    )
-    if not client.wait_for_service(timeout):
-        node.get_logger().error(
-            f"  Could not reach service '{srv_name}' within timeout {timeout:.2f}s"
-        )
-        return None
-
-    node.get_logger().info(f"  Successfully waited for service '{srv_name}'")
-    return client
-
-
-def _call_service(node, client, request):
-    node.get_logger().info(
-        f"Calling service '{client.srv_name}' with request '{request}'"
-    )
-    future = client.call_async(request)
-
-    rclpy.spin_until_future_complete(node, future)
-    if future.result() is None:
-        node.get_logger().error(
-            f"  Could not call service '{client.srv_name}': {future.exception()}"
-        )
-        return None
-
-    node.get_logger().info(f"  Received result: {future.result()}")
-    return future.result()
