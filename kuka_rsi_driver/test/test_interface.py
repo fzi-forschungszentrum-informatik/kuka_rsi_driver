@@ -25,6 +25,8 @@
 # CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
+import time
+
 import rclpy
 from rclpy.action import ActionClient
 
@@ -163,6 +165,39 @@ def wait_for_service(srv_name, srv_type, node, timeout=10, log=None):
 
     log.info(f"  Successfully waited for service '{srv_name}'")
     return client
+
+
+def subscribe_once(topic, topic_type, node, timeout=10, log=None):
+    if log is None:
+        log = node.get_logger()
+
+    # Create subscriber
+    last_msg = None
+
+    def msg_cb(msg):
+        nonlocal last_msg
+        last_msg = msg
+
+    subscription = node.create_subscription(topic_type, topic, msg_cb, 1)
+
+    # Spin until receiving msg
+    log.info(
+        f"Waiting for message on topic {topic} ({topic_type.__name__}) for {timeout:.2f}s"
+    )
+    spin_start = time.time()
+    while (last_msg is None) and (time.time() < (spin_start + timeout)):
+        rclpy.spin_once(node, timeout_sec=0.1)
+
+    if last_msg is None:
+        error_msg = "Did not receive message within timeout"
+        log.error(f"  {error_msg}")
+        raise RuntimeError(error_msg)
+
+    log.info(f"  Received message: {last_msg}")
+
+    # Cleanup
+    subscription.destroy()
+    return last_msg
 
 
 def call_service(client, request, node, log=None):

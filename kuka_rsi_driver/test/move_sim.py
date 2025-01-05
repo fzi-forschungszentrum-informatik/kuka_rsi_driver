@@ -51,7 +51,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 
 sys.path.append(os.path.dirname(__file__))
-from test_interface import ControllerManagerInterface, ActionInterface
+from test_interface import ControllerManagerInterface, ActionInterface, subscribe_once
 
 
 @pytest.mark.launch_test
@@ -122,21 +122,23 @@ class MoveSimTest(unittest.TestCase):
         cls.node.destroy_node()
         rclpy.shutdown()
 
-    def test_activate_joint_trajectory_controller(self):
-        self.controller_manager_interface.switch_controller(
-            deactivate=self.MOTION_CONTROLLERS, strict=False
-        )
-        self.controller_manager_interface.switch_controller(
-            activate=["joint_trajectory_controller"], strict=True
-        )
+    def test_activate_motion_controllers(self):
+        for controller in self.MOTION_CONTROLLERS:
+            with self.subTest(controller=controller):
+                self.controller_manager_interface.switch_controller(
+                    deactivate=self.MOTION_CONTROLLERS, strict=False
+                )
+                self.controller_manager_interface.switch_controller(
+                    activate=[controller], strict=True
+                )
 
-    def test_activate_forward_position_controller(self):
-        self.controller_manager_interface.switch_controller(
-            deactivate=self.MOTION_CONTROLLERS, strict=False
-        )
-        self.controller_manager_interface.switch_controller(
-            activate=["forward_position_controller"], strict=True
-        )
+                time.sleep(1)
+
+                controllers = self.controller_manager_interface.list_controllers()
+                active_controllers = [
+                    c.name for c in controllers if c.state == "active"
+                ]
+                self.assertIn(controller, active_controllers)
 
     def test_move_jtc(self, prefix):
         # Make sure jtc is active
@@ -175,7 +177,7 @@ class MoveSimTest(unittest.TestCase):
         self.assertEqual(result.error_code, FollowJointTrajectory.Result.SUCCESSFUL)
 
         # Verify joint state
-        joint_state = self._subscribe_once("/joint_states", JointState, 3)
+        joint_state = subscribe_once("/joint_states", JointState, self.node, 3)
 
         expected_state = test_points[-1][1]
         for i, joint_name in enumerate(joint_names):
@@ -183,30 +185,6 @@ class MoveSimTest(unittest.TestCase):
             self.assertLess(
                 abs(expected_state[i] - joint_state.position[joint_i]), 0.01
             )
-
-    def _subscribe_once(self, topic, topic_type, timeout=10):
-        # Create subscriber
-        last_msg = None
-
-        def msg_cb(msg):
-            nonlocal last_msg
-            last_msg = msg
-
-        subscription = self.node.create_subscription(JointState, topic, msg_cb, 1)
-
-        # Spin until receiving msg
-        self.node.get_logger().info(
-            f"Waiting for message on topic {topic} ({topic_type.__name__}) for {timeout:.2f}s"
-        )
-        spin_start = time.time()
-        while (last_msg is None) and (time.time() < (spin_start + timeout)):
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-        self.assertIsNotNone(last_msg)
-        self.node.get_logger().info(f"  Received message: {last_msg}")
-
-        # Cleanup
-        subscription.destroy()
-        return last_msg
 
     def _wait_for_spawners(self):
         expected_controllers_active = [
