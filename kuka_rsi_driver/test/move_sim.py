@@ -114,6 +114,9 @@ class MoveSimTest(unittest.TestCase):
         cls.node = rclpy.node.Node("kuka_rsi_driver_test")
         cls.controller_manager_interface = ControllerManagerInterface(cls.node)
 
+        MoveSimTest.test_cnt = 1
+        cls.log = cls.node.get_logger()
+
         # Wait until spawners are done
         cls._wait_for_spawners(cls)
 
@@ -122,32 +125,31 @@ class MoveSimTest(unittest.TestCase):
         cls.node.destroy_node()
         rclpy.shutdown()
 
+    def setUp(self):
+        self.log = self.node.get_logger().get_child(f"{MoveSimTest.test_cnt}")
+        MoveSimTest.test_cnt += 1
+
+        print("\n")
+        self.log.info(f"Running test {self.id()}")
+
     def test_activate_motion_controllers(self):
         for controller in self.MOTION_CONTROLLERS:
             with self.subTest(controller=controller):
-                self.controller_manager_interface.switch_controller(
-                    deactivate=self.MOTION_CONTROLLERS, strict=False
-                )
-                self.controller_manager_interface.switch_controller(
-                    activate=[controller], strict=True
-                )
+                self.log.info(f"Testing activation of motion controller '{controller}'")
+                self._activate_motion_controller(controller)
 
                 time.sleep(1)
 
+                self.log.info(f"Verifying state of '{controller}'")
                 controllers = self.controller_manager_interface.list_controllers()
                 active_controllers = [
                     c.name for c in controllers if c.state == "active"
                 ]
                 self.assertIn(controller, active_controllers)
+                self.log.info(f"Successfully activated '{controller}'")
 
     def test_move_jtc(self, prefix):
-        # Make sure jtc is active
-        self.controller_manager_interface.switch_controller(
-            deactivate=self.MOTION_CONTROLLERS, strict=False
-        )
-        self.controller_manager_interface.switch_controller(
-            activate=["joint_trajectory_controller"], strict=True
-        )
+        self._activate_motion_controller("joint_trajectory_controller")
 
         # Create dummy trajectory
         joint_names = [f"{prefix}joint_a{i+1}" for i in range(6)]
@@ -165,6 +167,7 @@ class MoveSimTest(unittest.TestCase):
         )
 
         # Send goal to jtc
+        self.log.info("Sending dummy trajectory to controller")
         follow_joint_trajectory_client = ActionInterface(
             "joint_trajectory_controller/follow_joint_trajectory",
             FollowJointTrajectory,
@@ -177,7 +180,10 @@ class MoveSimTest(unittest.TestCase):
         self.assertEqual(result.error_code, FollowJointTrajectory.Result.SUCCESSFUL)
 
         # Verify joint state
-        joint_state = subscribe_once("/joint_states", JointState, self.node, 3)
+        self.log.info("Verifying final position using joint_states")
+        joint_state = subscribe_once(
+            "/joint_states", JointState, self.node, 3, self.log
+        )
 
         expected_state = test_points[-1][1]
         for i, joint_name in enumerate(joint_names):
@@ -185,6 +191,7 @@ class MoveSimTest(unittest.TestCase):
             self.assertLess(
                 abs(expected_state[i] - joint_state.position[joint_i]), 0.01
             )
+        self.log.info("Motion successfull")
 
     def _wait_for_spawners(self):
         expected_controllers_active = [
@@ -196,6 +203,7 @@ class MoveSimTest(unittest.TestCase):
         expected_controllers_inactive = ["forward_position_controller"]
 
         # Wait until all controllers are loaded
+        self.log.info("Waiting for all controllers to be loaded")
         for _ in range(10):
             controllers = self.controller_manager_interface.list_controllers()
 
@@ -204,9 +212,11 @@ class MoveSimTest(unittest.TestCase):
             ):
                 break
 
+            self.log.info("Not all controllers are loaded yet - retrying")
             time.sleep(1)
 
         # Verify controller activations
+        self.log.info("Waiting for all spawners to be done")
         for _ in range(5):
             # Check controllers
             controllers_active = [c.name for c in controllers if c.state == "active"]
@@ -217,11 +227,25 @@ class MoveSimTest(unittest.TestCase):
             if (set(controllers_active) == set(expected_controllers_active)) and (
                 set(controllers_inactive) == set(expected_controllers_inactive)
             ):
+                self.log.info("All controllers are in their expected state")
                 return
 
             # Spawners are not yet done, so wait and retry
+            self.log.info("Not all controllers are fully spawned yet - retrying")
             time.sleep(1)
             controllers = self.controller_manager_interface.list_controllers()
 
         # Previous calls did not show controller activation success => Fail
         self.fail()
+
+    def _activate_motion_controller(self, controller):
+        self.log.info(
+            f"Activating motion controller '{controller}', deactivating {self.MOTION_CONTROLLERS} first"
+        )
+        self.controller_manager_interface.switch_controller(
+            deactivate=self.MOTION_CONTROLLERS, strict=False
+        )
+        self.controller_manager_interface.switch_controller(
+            activate=[controller], strict=True
+        )
+        self.log.info("  done")
