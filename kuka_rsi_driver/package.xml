@@ -29,7 +29,6 @@
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>joint_trajectory_controller</exec_depend>
   <exec_depend>kuka_rsi_controllers</exec_depend>
-  <exec_depend>mock_components</exec_depend>
   <exec_depend>pose_broadcaster</exec_depend>
   <exec_depend>position_controllers</exec_depend>
   <exec_depend>python-argparse</exec_depend>
