@@ -56,7 +56,7 @@ from test_interface import ControllerManagerInterface, ActionInterface, subscrib
 
 @pytest.mark.launch_test
 @launch_testing.parametrize(
-    "prefix,robot_model",
+    "prefix,robot_model,use_mock_hardware",
     itertools.product(
         ["", "prefix_"],
         [
@@ -64,9 +64,10 @@ from test_interface import ControllerManagerInterface, ActionInterface, subscrib
             ("kuka_kr120_support", "kr120r2500pro_macro.xacro", "kuka_kr120r2500pro"),
             ("kuka_kr210_support", "kr210r3100_macro.xacro", "kuka_kr210r3100"),
         ],
+        [True, False],
     ),
 )
-def generate_test_description(prefix, robot_model):
+def generate_test_description(prefix, robot_model, use_mock_hardware):
     kuka_rsi_driver = FindPackageShare("kuka_rsi_driver")
 
     test_description = LaunchDescription()
@@ -84,6 +85,7 @@ def generate_test_description(prefix, robot_model):
                 "description_package": robot_model[0],
                 "description_macro_file": robot_model[1],
                 "macro_name": robot_model[2],
+                "use_mock_hardware": f"{use_mock_hardware}",
                 "launch_rviz": "False",
                 "prefix": prefix,
             }.items(),
@@ -93,13 +95,14 @@ def generate_test_description(prefix, robot_model):
     #
     # Start simulator
     #
-    test_description.add_action(
-        Node(
-            package="kuka_rsi_driver",
-            executable="simulator",
-            arguments=["--host-ip", "127.0.0.1"],
+    if not use_mock_hardware:
+        test_description.add_action(
+            Node(
+                package="kuka_rsi_driver",
+                executable="simulator",
+                arguments=["--host-ip", "127.0.0.1"],
+            )
         )
-    )
 
     test_description.add_action(ReadyToTest())
     return test_description
