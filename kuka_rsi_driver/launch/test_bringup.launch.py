@@ -98,6 +98,13 @@ def generate_launch_description():
         default_value="false",
         description="Whether to use mock hardware instead of real hardware interface",
     )
+    declare_robot_description_arg(
+        "initial_positions_file",
+        default_value=PathJoinSubstitution(
+            [kuka_rsi_driver, "config", "initial_positions.yaml"]
+        ),
+        description="Initial joint positions when using mock hardware",
+    )
 
     declare_robot_description_arg(
         "rsi_listen_ip",

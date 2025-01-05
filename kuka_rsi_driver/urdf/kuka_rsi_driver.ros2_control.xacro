@@ -2,10 +2,12 @@
 
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:macro name="kuka_rsi_driver_control_joint" params="name">
+  <xacro:macro name="kuka_rsi_driver_control_joint" params="name initial_position">
     <joint name="${name}">
       <command_interface name="position" />
-      <state_interface name="position" />
+      <state_interface name="position">
+        <param name="initial_value">${initial_position}</param>
+      </state_interface>
       <state_interface name="effort" />
     </joint>
   </xacro:macro>
@@ -14,6 +16,7 @@
     name
     prefix
     use_mock_hardware:=false
+    initial_positions:=${dict(joint_a1=0.0,joint_a2=0.0,joint_a3=0.0,joint_a4=0.0,joint_a5=0.0,joint_a6=0.0)}
     rsi_listen_ip
     rsi_listen_port:=49152
     ">
@@ -29,12 +32,12 @@
         </xacro:unless>
       </hardware>
 
-      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a1" />
-      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a2" />
-      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a3" />
-      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a4" />
-      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a5" />
-      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a6" />
+      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a1" initial_position="${initial_positions['joint_a1']}" />
+      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a2" initial_position="${initial_positions['joint_a2']}" />
+      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a3" initial_position="${initial_positions['joint_a3']}" />
+      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a4" initial_position="${initial_positions['joint_a4']}" />
+      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a5" initial_position="${initial_positions['joint_a5']}" />
+      <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a6" initial_position="${initial_positions['joint_a6']}" />
 
       <sensor name="${prefix}tcp">
         <state_interface name="position.x">

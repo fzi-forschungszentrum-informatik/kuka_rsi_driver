@@ -8,11 +8,15 @@
   <xacro:arg name="macro_name" default="" />
 
   <xacro:arg name="use_mock_hardware" default="false" />
+  <xacro:arg name="initial_positions_file" default="$(find kuka_rsi_driver)/config/initial_positions.yaml" />
 
   <xacro:arg name="rsi_listen_ip" default="127.0.0.1" />
   <xacro:arg name="rsi_listen_port" default="49152" />
 
   <xacro:arg name="prefix" default="" />
+
+  <!-- Convert argument to property so it can be used in a function -->
+  <xacro:property name="initial_positions_file" default="$(arg initial_positions_file)" />
 
   <!-- Include robot description and invoke macro -->
   <xacro:property name="description_package" value="$(arg description_package)" />
@@ -25,6 +29,7 @@
     name="$(arg macro_name)"
     prefix="$(arg prefix)"
     use_mock_hardware="$(arg use_mock_hardware)"
+    initial_positions="${xacro.load_yaml(initial_positions_file)}"
     rsi_listen_ip="$(arg rsi_listen_ip)"
     rsi_listen_port="$(arg rsi_listen_port)"
   />
