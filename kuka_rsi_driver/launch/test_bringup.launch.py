@@ -94,6 +94,12 @@ def generate_launch_description():
     )
 
     declare_robot_description_arg(
+        "use_mock_hardware",
+        default_value="false",
+        description="Whether to use mock hardware instead of real hardware interface",
+    )
+
+    declare_robot_description_arg(
         "rsi_listen_ip",
         default_value="127.0.0.1",
         description="Own IP address to use for RSI communication",

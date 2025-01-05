@@ -13,14 +13,20 @@
   <xacro:macro name="kuka_rsi_driver_control" params="
     name
     prefix
+    use_mock_hardware:=false
     rsi_listen_ip
     rsi_listen_port:=49152
     ">
     <ros2_control name="${name}" type="system">
       <hardware>
-        <plugin>kuka_rsi_driver/KukaRsiHardwareInterface</plugin>
-        <param name="listen_address">${rsi_listen_ip}</param>
-        <param name="listen_port">${rsi_listen_port}</param>
+        <xacro:if value="${use_mock_hardware}">
+          <plugin>mock_components/GenericSystem</plugin>
+        </xacro:if>
+        <xacro:unless value="${use_mock_hardware}">
+          <plugin>kuka_rsi_driver/KukaRsiHardwareInterface</plugin>
+          <param name="listen_address">${rsi_listen_ip}</param>
+          <param name="listen_port">${rsi_listen_port}</param>
+        </xacro:unless>
       </hardware>
 
       <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a1" />
@@ -31,21 +37,39 @@
       <xacro:kuka_rsi_driver_control_joint name="${prefix}joint_a6" />
 
       <sensor name="${prefix}tcp">
-        <state_interface name="position.x"/>
-        <state_interface name="position.y"/>
-        <state_interface name="position.z"/>
-        <state_interface name="orientation.x"/>
-        <state_interface name="orientation.y"/>
-        <state_interface name="orientation.z"/>
-        <state_interface name="orientation.w"/>
+        <state_interface name="position.x">
+          <param name="initial_value">0</param>
+        </state_interface>
+        <state_interface name="position.y">
+          <param name="initial_value">0</param>
+        </state_interface>
+        <state_interface name="position.z">
+          <param name="initial_value">0</param>
+        </state_interface>
+        <state_interface name="orientation.x">
+          <param name="initial_value">0</param>
+        </state_interface>
+        <state_interface name="orientation.y">
+          <param name="initial_value">0</param>
+        </state_interface>
+        <state_interface name="orientation.z">
+          <param name="initial_value">0</param>
+        </state_interface>
+        <state_interface name="orientation.w">
+          <param name="initial_value">1</param>
+        </state_interface>
       </sensor>
 
       <gpio name="${prefix}robot_state">
-        <state_interface name="program_state" />
+        <state_interface name="program_state">
+          <param name="initial_value">3</param>
+        </state_interface>
       </gpio>
 
       <gpio name="${prefix}speed_scaling">
-        <state_interface name="speed_scaling_factor" />
+        <state_interface name="speed_scaling_factor">
+          <param name="initial_value">1</param>
+        </state_interface>
       </gpio>
 
     </ros2_control>
