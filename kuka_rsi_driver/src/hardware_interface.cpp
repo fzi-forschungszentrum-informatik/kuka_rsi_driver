@@ -342,9 +342,9 @@ void KukaRsiHardwareInterface::setState(const RsiState& state)
   }
 
   // TCP
-  set_state(m_sensor_tcp_state_ifaces[0], state.cartesian_actual_pos.x / 1000);
-  set_state(m_sensor_tcp_state_ifaces[1], state.cartesian_actual_pos.y / 1000);
-  set_state(m_sensor_tcp_state_ifaces[2], state.cartesian_actual_pos.z / 1000);
+  set_state(m_sensor_tcp_state_ifaces[0], state.cartesian_actual_pos.x() / 1000);
+  set_state(m_sensor_tcp_state_ifaces[1], state.cartesian_actual_pos.y() / 1000);
+  set_state(m_sensor_tcp_state_ifaces[2], state.cartesian_actual_pos.z() / 1000);
 
   std::array<double, 4> tcp_rpy;
   state.cartesian_actual_pos.getQuaternion(tcp_rpy[0], tcp_rpy[1], tcp_rpy[2], tcp_rpy[3]);

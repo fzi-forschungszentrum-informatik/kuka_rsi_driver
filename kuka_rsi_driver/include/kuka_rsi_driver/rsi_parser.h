@@ -39,8 +39,10 @@
 #include "rsi_factory.h"
 
 #include <boost/pool/pool.hpp>
+#include <charconv>
 #include <cstdint>
 #include <expat.h>
+#include <fmt/format.h>
 #include <functional>
 #include <rclcpp/logger.hpp>
 #include <span>
@@ -53,8 +55,8 @@ namespace kuka_rsi_driver {
 /*! \brief Pool-based memory handler for the RSI xml parser
  *
  * Parsing XML requires memory allocations. This class provides a pool-based allocator that can
- * satisfy these in constant time, making them suitable for real-time contexts. Two memory pools are
- * used to efficently handle different allocation sizes.
+ * satisfy these in constant time, making them suitable for real-time contexts. Two memory pools
+ * are used to efficently handle different allocation sizes.
  */
 class XmlMemoryHandler
 {
@@ -107,12 +109,8 @@ private:
 
 /*! \brief A simplified stream-based XML parser
  *
- * This only handles documents of the structure
- *
- *     <root_tag>           <!-- One specified root document that is known in advance -->
- *       <abc>foo</abc>     <!-- Elements without attributes -->
- *       <foo abc="bar" />  <!-- Elements without text -->
- *     </root_tag>
+ * This only handles documents with one known root element and its direct child elements. The
+ * structure of the document must be known before parsing.
  *
  * In order to avoid allocations, the parser provides the buffer that is parsed.
  */
@@ -148,34 +146,42 @@ public:
    */
   void parseBuffer(std::size_t len);
 
-  //! Callback function for elements with text
-  using ElementCallback = std::function<void(std::string_view)>;
+  //! Callback for registered elements
+  using ElementCallback = std::function<void(std::string_view, std::span<std::string_view>)>;
 
-  /*! \brief Add a callback for elements without attributes
+  /*! \brief Register a callback for a given element
    *
-   * \note \p tag needs to still be usable at the time of parsing
+   * If the element is found in the input and the attributes don't match the names given here, an
+   * exception will be thrown.
    *
-   * \param tag Name of tag to be called for.
-   * \param cb Callback to be called during parsing.
+   * \note \p tag needs to be usable at the time of parsing
+   *
+   * \param name Name of the element
+   * \param cb Callback that will be called with the element text and it's attributes
+   * \param attributes Attributes to be expected, defining the order of the values passed to \p cb
    */
-  void addElementCb(std::string_view tag, ElementCallback cb);
-
-  //! Callback function for elements with attributes
-  using AttributeCallback = std::function<void(const char**)>;
-
-  /*! \brief Add a callback for elements with attributes
-   *
-   * \note \p tag needs to still be usable at the time of parsing
-   *
-   * \param tag Name of tag to be called for.
-   * \param cb Callback to be called during parsing.
-   */
-  void addAttributeCb(std::string_view tag, AttributeCallback cb);
+  void addElementCb(std::string_view name,
+                    ElementCallback cb,
+                    const std::vector<std::string>& attributes = {});
 
 private:
   static void XMLCALL characterData(void* user_data, const XML_Char* s, int len);
   static void XMLCALL startElement(void* user_data, const XML_Char* name, const XML_Char** atts);
   static void XMLCALL endElement(void* user_data, const XML_Char* name);
+
+  struct Callback
+  {
+    Callback(ElementCallback cb, const std::vector<std::string>& attributes);
+
+    void copyValue(std::string_view attr_name, std::string_view attr_value);
+
+    ElementCallback cb;
+
+    std::vector<std::string> attributes;
+
+    std::vector<std::vector<char>> attribute_bufs;
+    std::vector<std::size_t> attribute_buf_lens;
+  };
 
   void setupParser();
 
@@ -194,8 +200,8 @@ private:
   std::size_t m_scope_lvl;
   bool m_in_scope;
 
-  std::unordered_map<std::string_view, ElementCallback> m_element_cbs;
-  std::unordered_map<std::string_view, AttributeCallback> m_attribute_cbs;
+  std::unordered_map<std::string_view, Callback> m_callbacks;
+  std::vector<std::string_view> m_attribute_views;
 };
 
 /*! \brief Stream-based parser for RSI state messages
@@ -231,19 +237,16 @@ public:
   [[nodiscard]] std::shared_ptr<RsiState> parseBuffer(std::size_t len);
 
 private:
-  enum class ValueType
-  {
-    POSITION_SETPOINT,
-    POSITION_ACTUAL,
-    TORQUE
-  };
-
-  void onAxisElement(ValueType value_type, const XML_Char** atts);
-  void onCartesianElement(ValueType value_type, const XML_Char** atts);
-  void onOverwrite(const XML_Char** atts);
-  void onProgramState(const XML_Char** atts);
-  void onDelay(const XML_Char** atts);
-  void onIpoc(std::string_view text);
+  template <typename T, typename IteratorT>
+  void setAttributeValues(IteratorT first,
+                          IteratorT last,
+                          std::string_view text,
+                          std::span<std::string_view> attributes) const;
+  template <typename T>
+  void
+  setAttributeValue(T& dest, std::string_view text, std::span<std::string_view> attributes) const;
+  template <typename T>
+  void setTextValue(T& dest, std::string_view text, std::span<std::string_view> attributes) const;
 
   rclcpp::Logger m_log;
 
@@ -252,6 +255,89 @@ private:
   RsiFactory* m_rsi_factory;
   std::shared_ptr<RsiState> m_rsi_state;
 };
+
+} // namespace kuka_rsi_driver
+
+
+namespace kuka_rsi_driver {
+
+template <typename T>
+T parseNumber(std::string_view str)
+{
+  if constexpr (std::is_enum_v<T>)
+  {
+    const auto number = parseNumber<std::underlying_type_t<T>>(str);
+    return static_cast<T>(number);
+  }
+  else
+  {
+    T result;
+    const auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
+
+    if (ec == std::errc())
+    {
+      return static_cast<T>(result);
+    }
+    else if (ec == std::errc::invalid_argument)
+    {
+      throw std::runtime_error{fmt::format("'{}' is not a number", str)};
+    }
+    else if (ec == std::errc::result_out_of_range)
+    {
+      throw std::runtime_error{fmt::format("'{}' is out of range for given data type", str)};
+    }
+
+    throw std::runtime_error{fmt::format("Could not parse number '{}'", str)};
+  }
+}
+
+template <typename T, typename IteratorT>
+void RsiParser::setAttributeValues(IteratorT first,
+                                   IteratorT last,
+                                   std::string_view text,
+                                   std::span<std::string_view> attributes) const
+{
+  if (!text.empty())
+  {
+    throw std::runtime_error{"Element cannot have text"};
+  }
+
+  std::size_t i = 0;
+  for (auto it = first; it != last; ++it, ++i)
+  {
+    *it = parseNumber<T>(attributes[i]);
+  }
+}
+
+template <typename T>
+void RsiParser::setAttributeValue(T& dest,
+                                  std::string_view text,
+                                  std::span<std::string_view> attributes) const
+{
+  if (!text.empty())
+  {
+    throw std::runtime_error{"Element cannot have text"};
+  }
+  if (attributes.size() != 1)
+  {
+    throw std::runtime_error{"Unexpected number of attributes"};
+  }
+
+  dest = parseNumber<T>(attributes[0]);
+}
+
+template <typename T>
+void RsiParser::setTextValue(T& dest,
+                             std::string_view text,
+                             std::span<std::string_view> attributes) const
+{
+  if (!attributes.empty())
+  {
+    throw std::runtime_error{"Element cannot have attributes"};
+  }
+
+  dest = parseNumber<T>(text);
+}
 
 } // namespace kuka_rsi_driver
 

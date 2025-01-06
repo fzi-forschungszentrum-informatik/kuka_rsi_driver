@@ -34,33 +34,9 @@
 #include "kuka_rsi_driver/rsi_parser.h"
 
 #include <array>
-#include <charconv>
-#include <fmt/format.h>
-#include <iostream>
 #include <rclcpp/rclcpp.hpp>
 #include <utility>
 
-template <typename T>
-T parseNumber(std::string_view str)
-{
-  T result;
-  const auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
-
-  if (ec == std::errc())
-  {
-    return result;
-  }
-  else if (ec == std::errc::invalid_argument)
-  {
-    throw std::runtime_error{fmt::format("'{}' is not a number", str)};
-  }
-  else if (ec == std::errc::result_out_of_range)
-  {
-    throw std::runtime_error{fmt::format("'{}' is out of range for given data type", str)};
-  }
-
-  throw std::runtime_error{fmt::format("Could not parse number '{}'", str)};
-}
 
 namespace kuka_rsi_driver {
 
@@ -175,14 +151,21 @@ void XmlParser::parseBuffer(std::size_t len)
   setupParser();
 }
 
-void XmlParser::addElementCb(std::string_view tag_name, ElementCallback cb)
+void XmlParser::addElementCb(std::string_view name,
+                             ElementCallback cb,
+                             const std::vector<std::string>& attributes)
 {
-  m_element_cbs[tag_name] = cb;
-}
+  const auto [_, success] = m_callbacks.emplace(name, Callback{cb, attributes});
+  if (!success)
+  {
+    throw std::runtime_error{
+      fmt::format("Cannot register multiple callbacks for element '{}'", name)};
+  }
 
-void XmlParser::addAttributeCb(std::string_view tag_name, AttributeCallback cb)
-{
-  m_attribute_cbs[tag_name] = cb;
+  if (attributes.size() > m_attribute_views.size())
+  {
+    m_attribute_views.resize(attributes.size());
+  }
 }
 
 void XmlParser::characterData(void* user_data, const XML_Char* s, int len)
@@ -213,9 +196,15 @@ void XmlParser::startElement(void* user_data, const XML_Char* name_c, const XML_
   // Check attribute callbacks
   if (parser.m_in_scope)
   {
-    if (const auto cb_it = parser.m_attribute_cbs.find(name); cb_it != parser.m_attribute_cbs.end())
+    if (const auto cb_it = parser.m_callbacks.find(name); cb_it != parser.m_callbacks.end())
     {
-      (cb_it->second)(atts);
+      auto& callback = cb_it->second;
+
+      // Copy over attributes
+      for (std::size_t i = 0; atts[i]; i += 2)
+      {
+        callback.copyValue(atts[i], atts[i + 1]);
+      }
     }
   }
 
@@ -237,17 +226,68 @@ void XmlParser::endElement(void* user_data, const XML_Char* name_c)
     return;
   }
 
-  // Check element callbacks
+  // Check callbacks
   if (parser.m_in_scope)
   {
-    if (const auto cb_it = parser.m_element_cbs.find(name); cb_it != parser.m_element_cbs.end())
+    if (const auto cb_it = parser.m_callbacks.find(name); cb_it != parser.m_callbacks.end())
     {
-      (cb_it->second)(std::string_view{&parser.m_character_buf[0], parser.m_character_buf_i});
+      const auto& callback = cb_it->second;
+
+      // Set up attribute values
+      for (std::size_t i = 0; i < callback.attributes.size(); ++i)
+      {
+        parser.m_attribute_views[i] =
+          std::string_view{callback.attribute_bufs[i].data(), callback.attribute_buf_lens[i]};
+      }
+
+      // Call registered callback
+      callback.cb(
+        std::string_view{parser.m_character_buf.data(), parser.m_character_buf_i},
+        std::span<std::string_view>{parser.m_attribute_views.data(), callback.attributes.size()});
     }
   }
 
   // Bookkeeping
   parser.m_character_buf_i = 0;
+}
+
+XmlParser::Callback::Callback(ElementCallback cb, const std::vector<std::string>& attributes)
+  : cb{std::move(cb)}
+  , attributes{attributes}
+{
+  attribute_bufs.resize(attributes.size());
+  attribute_buf_lens.resize(attributes.size());
+  std::fill(attribute_buf_lens.begin(), attribute_buf_lens.end(), -1);
+
+  for (auto& buf : attribute_bufs)
+  {
+    buf.resize(64);
+  }
+}
+
+void XmlParser::Callback::copyValue(std::string_view attr_name, std::string_view attr_value)
+{
+  // Find correct attribute index
+  if (const auto it = std::find(attributes.begin(), attributes.end(), attr_name);
+      it != attributes.end())
+  {
+    const auto i = it - attributes.begin();
+
+    // Check if value fits into buffer
+    if (attr_value.size() > attribute_bufs[i].size())
+    {
+      throw std::runtime_error{fmt::format(
+        "Attribute value {}={} is too large for attribute buffer", attr_name, attr_value)};
+    }
+
+    // Copy over attributes
+    std::memcpy(&attribute_bufs[i][0], attr_value.data(), attr_value.size());
+    attribute_buf_lens[i] = attr_value.size();
+  }
+  else
+  {
+    throw std::runtime_error{fmt::format("Unexpected attribute {}={}", attr_name, attr_value)};
+  }
 }
 
 void XmlParser::setupParser()
@@ -267,26 +307,75 @@ RsiParser::RsiParser(rclcpp::Logger log, RsiFactory* rsi_factory, std::size_t bu
   , m_xml_parser{"Rob", m_log}
   , m_rsi_factory{rsi_factory}
 {
-  m_xml_parser.addAttributeCb(
-    "ASPos", [this](const char** attrs) { onAxisElement(ValueType::POSITION_SETPOINT, attrs); });
-  m_xml_parser.addAttributeCb(
-    "AIPos", [this](const char** attrs) { onAxisElement(ValueType::POSITION_ACTUAL, attrs); });
+  using namespace std::literals;
+  const std::vector axes           = {"A1"s, "A2"s, "A3"s, "A4"s, "A5"s, "A6"s};
+  const std::vector cartesian_axes = {"X"s, "Y"s, "Z"s, "A"s, "B"s, "C"s};
 
-  m_xml_parser.addAttributeCb("RSol", [this](const char** attrs) {
-    onCartesianElement(ValueType::POSITION_SETPOINT, attrs);
-  });
-  m_xml_parser.addAttributeCb(
-    "RIst", [this](const char** attrs) { onCartesianElement(ValueType::POSITION_ACTUAL, attrs); });
+  m_xml_parser.addElementCb(
+    "ASPos",
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(m_rsi_state->axis_setpoint_pos.begin(),
+                                 m_rsi_state->axis_setpoint_pos.end(),
+                                 text,
+                                 attributes);
+    },
+    axes);
+  m_xml_parser.addElementCb(
+    "AIPos",
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(
+        m_rsi_state->axis_actual_pos.begin(), m_rsi_state->axis_actual_pos.end(), text, attributes);
+    },
+    axes);
 
-  m_xml_parser.addAttributeCb(
-    "GearTorque", [this](const char** attrs) { onAxisElement(ValueType::TORQUE, attrs); });
+  m_xml_parser.addElementCb(
+    "RSol",
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(m_rsi_state->cartesian_setpoint_pos.begin(),
+                                 m_rsi_state->cartesian_setpoint_pos.end(),
+                                 text,
+                                 attributes);
+    },
+    cartesian_axes);
+  m_xml_parser.addElementCb(
+    "RIst",
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(m_rsi_state->cartesian_actual_pos.begin(),
+                                 m_rsi_state->cartesian_actual_pos.end(),
+                                 text,
+                                 attributes);
+    },
+    cartesian_axes);
 
-  m_xml_parser.addAttributeCb("ProgStatus", [this](const char** attrs) { onProgramState(attrs); });
-  m_xml_parser.addAttributeCb("OvPro", [this](const char** attrs) { onOverwrite(attrs); });
+  m_xml_parser.addElementCb(
+    "GearTorque",
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(
+        m_rsi_state->axis_eff.begin(), m_rsi_state->axis_eff.end(), text, attributes);
+    },
+    axes);
 
-  m_xml_parser.addAttributeCb("Delay", [this](const char** attrs) { onDelay(attrs); });
+  m_xml_parser.addElementCb("ProgStatus",
+                            [this](std::string_view text, std::span<std::string_view> attributes) {
+                              setAttributeValue(m_rsi_state->program_status, text, attributes);
+                            },
+                            {"R"});
+  m_xml_parser.addElementCb("OvPro",
+                            [this](std::string_view text, std::span<std::string_view> attributes) {
+                              setAttributeValue(m_rsi_state->speed_scaling, text, attributes);
+                            },
+                            {"R"});
 
-  m_xml_parser.addElementCb("IPOC", [this](std::string_view text) { onIpoc(text); });
+  m_xml_parser.addElementCb("Delay",
+                            [this](std::string_view text, std::span<std::string_view> attributes) {
+                              setAttributeValue(m_rsi_state->delay, text, attributes);
+                            },
+                            {"D"});
+
+  m_xml_parser.addElementCb("IPOC",
+                            [this](std::string_view text, std::span<std::string_view> attributes) {
+                              setTextValue<std::size_t>(m_rsi_state->ipoc, text, attributes);
+                            });
 }
 
 std::span<char> RsiParser::buffer() const
@@ -302,140 +391,6 @@ std::shared_ptr<RsiState> RsiParser::parseBuffer(std::size_t len)
   const auto result = m_rsi_state;
   m_rsi_state.reset();
   return result;
-}
-
-void RsiParser::onAxisElement(ValueType value_type, const XML_Char** atts)
-{
-  for (std::size_t i = 0; atts[i]; i += 2)
-  {
-    const char* name  = atts[i];
-    const char* value = atts[i + 1];
-
-    if ((name[0] != 'A') || (name[1] < '1') || (name[1] > '6') || (name[2] != '\0'))
-    {
-      throw std::runtime_error{fmt::format("Invalid axis name '{}'", name)};
-    }
-
-    const int n  = name[1] - '0';
-    const auto v = parseNumber<double>(value);
-
-    switch (value_type)
-    {
-      case ValueType::POSITION_ACTUAL:
-        m_rsi_state->axis_actual_pos[n - 1] = v;
-        break;
-
-      case ValueType::POSITION_SETPOINT:
-        m_rsi_state->axis_setpoint_pos[n - 1] = v;
-        break;
-
-      case ValueType::TORQUE:
-        m_rsi_state->axis_eff[n - 1] = v;
-    }
-  }
-}
-
-void RsiParser::onCartesianElement(ValueType value_type, const XML_Char** atts)
-{
-  auto& pose = [&]() -> CartesianPose& {
-    switch (value_type)
-    {
-      case ValueType::POSITION_ACTUAL:
-        return m_rsi_state->cartesian_actual_pos;
-      case ValueType::POSITION_SETPOINT:
-        return m_rsi_state->cartesian_setpoint_pos;
-      default:
-        throw std::runtime_error{"Invalid value type"};
-    }
-  }();
-
-  for (std::size_t i = 0; atts[i]; i += 2)
-  {
-    const char* name  = atts[i];
-    const char* value = atts[i + 1];
-
-    const auto v = parseNumber<double>(value);
-
-    switch (name[0])
-    {
-      case 'X':
-        pose.x = v;
-        break;
-
-      case 'Y':
-        pose.y = v;
-        break;
-
-      case 'Z':
-        pose.z = v;
-        break;
-
-      case 'A':
-        pose.a = v;
-        break;
-
-      case 'B':
-        pose.b = v;
-        break;
-
-      case 'C':
-        pose.c = v;
-        break;
-
-      default:
-        throw std::runtime_error{fmt::format("Invalid axis name '{}'", name)};
-    }
-
-    if (name[1] != '\0')
-    {
-      throw std::runtime_error{fmt::format("Invalid axis name '{}'", name)};
-    }
-  }
-}
-
-void RsiParser::onOverwrite(const XML_Char** atts)
-{
-  for (std::size_t i = 0; atts[i]; i += 2)
-  {
-    if (atts[i][0] == 'R')
-    {
-      m_rsi_state->speed_scaling = parseNumber<double>(atts[i + 1]);
-    }
-  }
-}
-
-void RsiParser::onProgramState(const XML_Char** atts)
-{
-  for (std::size_t i = 0; atts[i]; i += 2)
-  {
-    if (atts[i][0] == 'R')
-    {
-      m_rsi_state->program_status = static_cast<ProgramStatus>(parseNumber<long>(atts[i + 1]));
-    }
-  }
-}
-
-void RsiParser::onDelay(const XML_Char** atts)
-{
-  const auto* name = atts[0];
-  if (strcmp(name, "D") != 0)
-  {
-    throw std::runtime_error{fmt::format("Invalid Delay attribute '{}'", name)};
-  }
-  const auto* value = atts[1];
-
-  if (atts[2] != nullptr)
-  {
-    throw std::runtime_error{"Unexpected additional Delay attribute"};
-  }
-
-  const auto v       = parseNumber<std::size_t>(value);
-  m_rsi_state->delay = v;
-}
-
-void RsiParser::onIpoc(std::string_view text)
-{
-  m_rsi_state->ipoc = parseNumber<std::size_t>(text);
 }
 
 } // namespace kuka_rsi_driver
