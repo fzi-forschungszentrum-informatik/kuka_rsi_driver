@@ -107,12 +107,8 @@ private:
 
 /*! \brief A simplified stream-based XML parser
  *
- * This only handles documents of the structure
- *
- *     <root_tag>           <!-- One specified root document that is known in advance -->
- *       <abc>foo</abc>     <!-- Elements without attributes -->
- *       <foo abc="bar" />  <!-- Elements without text -->
- *     </root_tag>
+ * This only handles documents with one known root element and its direct child elements. The
+ * structure of the document must be known before parsing.
  *
  * In order to avoid allocations, the parser provides the buffer that is parsed.
  */
@@ -148,34 +144,42 @@ public:
    */
   void parseBuffer(std::size_t len);
 
-  //! Callback function for elements with text
-  using ElementCallback = std::function<void(std::string_view)>;
+  //! Callback for registered elements
+  using ElementCallback = std::function<void(std::string_view, std::span<std::string_view>)>;
 
-  /*! \brief Add a callback for elements without attributes
+  /*! \brief Register a callback for a given element
    *
-   * \note \p tag needs to still be usable at the time of parsing
+   * If the element is found in the input and the attributes don't match the names given here, an
+   * exception will be thrown.
    *
-   * \param tag Name of tag to be called for.
-   * \param cb Callback to be called during parsing.
+   * \note \p tag needs to be usable at the time of parsing
+   *
+   * \param name Name of the element
+   * \param cb Callback that will be called with the element text and it's attributes
+   * \param attributes Attributes to be expected, defining the order of the values passed to \p cb
    */
-  void addElementCb(std::string_view tag, ElementCallback cb);
-
-  //! Callback function for elements with attributes
-  using AttributeCallback = std::function<void(const char**)>;
-
-  /*! \brief Add a callback for elements with attributes
-   *
-   * \note \p tag needs to still be usable at the time of parsing
-   *
-   * \param tag Name of tag to be called for.
-   * \param cb Callback to be called during parsing.
-   */
-  void addAttributeCb(std::string_view tag, AttributeCallback cb);
+  void addElementCb(std::string_view name,
+                    ElementCallback cb,
+                    const std::vector<std::string>& attributes = {});
 
 private:
   static void XMLCALL characterData(void* user_data, const XML_Char* s, int len);
   static void XMLCALL startElement(void* user_data, const XML_Char* name, const XML_Char** atts);
   static void XMLCALL endElement(void* user_data, const XML_Char* name);
+
+  struct Callback
+  {
+    Callback(ElementCallback cb, const std::vector<std::string>& attributes);
+
+    void copyValue(std::string_view attr_name, std::string_view attr_value);
+
+    ElementCallback cb;
+
+    std::vector<std::string> attributes;
+
+    std::vector<std::vector<char>> attribute_bufs;
+    std::vector<std::size_t> attribute_buf_lens;
+  };
 
   void setupParser();
 
@@ -194,8 +198,8 @@ private:
   std::size_t m_scope_lvl;
   bool m_in_scope;
 
-  std::unordered_map<std::string_view, ElementCallback> m_element_cbs;
-  std::unordered_map<std::string_view, AttributeCallback> m_attribute_cbs;
+  std::unordered_map<std::string_view, Callback> m_callbacks;
+  std::vector<std::string_view> m_attribute_views;
 };
 
 /*! \brief Stream-based parser for RSI state messages
@@ -238,11 +242,11 @@ private:
     TORQUE
   };
 
-  void onAxisElement(ValueType value_type, const XML_Char** atts);
-  void onCartesianElement(ValueType value_type, const XML_Char** atts);
-  void onOverwrite(const XML_Char** atts);
-  void onProgramState(const XML_Char** atts);
-  void onDelay(const XML_Char** atts);
+  void onAxisElement(ValueType value_type, std::span<std::string_view> values);
+  void onCartesianElement(ValueType value_type, std::span<std::string_view> values);
+  void onOverwrite(std::string_view r);
+  void onProgramState(std::string_view r);
+  void onDelay(std::string_view d);
   void onIpoc(std::string_view text);
 
   rclcpp::Logger m_log;

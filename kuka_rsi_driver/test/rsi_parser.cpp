@@ -48,9 +48,12 @@ TEST(RsiParser, XmlParser)
   // clang-format off
   const std::string test_xml =
     R"(<root>)"
-    R"(  <abc foo="bar" />)"
-    R"(  <def>foo</def>)"
+    R"(  <abc>foo</abc>)"
     R"(  <def a="b">foo</def>)"
+    R"(  <abc>bar</abc>)"
+    R"(  <abc>def</abc>)"
+    R"(  <def a="42">bar</def>)"
+    R"(  <def a="43" />)"
     R"(</root>)";
   // clang-format on
 
@@ -60,67 +63,55 @@ TEST(RsiParser, XmlParser)
 
   // Check callback calls
   std::size_t cb_i = 0;
-  parser.addAttributeCb("abc", [&](const char** attrs) {
-    ASSERT_NE(attrs, nullptr);
+
+  parser.addElementCb("abc", [&](std::string_view text, std::span<std::string_view> attributes) {
+    EXPECT_EQ(attributes.size(), 0);
 
     switch (cb_i++)
     {
       case 0:
-        EXPECT_STREQ(attrs[0], "foo");
-        EXPECT_STREQ(attrs[1], "bar");
-        EXPECT_EQ(attrs[2], nullptr);
+        EXPECT_EQ(text, "foo");
         break;
 
-      default:
-        FAIL() << "Error at callback #" << (cb_i - 1);
-    }
-  });
-
-  parser.addElementCb("abc", [&](std::string_view chars) {
-    switch (cb_i++)
-    {
-      case 1:
-        EXPECT_TRUE(chars.empty());
-        break;
-
-      default:
-        FAIL() << "Error at callback #" << (cb_i - 1);
-    }
-  });
-
-  parser.addAttributeCb("def", [&](const char** attrs) {
-    ASSERT_NE(attrs, nullptr);
-
-    switch (cb_i++)
-    {
       case 2:
-        EXPECT_EQ(attrs[0], nullptr);
+        EXPECT_EQ(text, "bar");
         break;
 
-      case 4:
-        EXPECT_STREQ(attrs[0], "a");
-        EXPECT_STREQ(attrs[1], "b");
-        break;
-
-      default:
-        FAIL() << "Error at callback #" << (cb_i - 1);
-    }
-  });
-  parser.addElementCb("def", [&](std::string_view chars) {
-    switch (cb_i++)
-    {
       case 3:
-        EXPECT_EQ(chars, "foo");
+        EXPECT_EQ(text, "def");
         break;
 
-      case 5:
-        EXPECT_EQ(chars, "foo");
-        break;
 
       default:
         FAIL() << "Error at callback #" << (cb_i - 1);
     }
   });
+  parser.addElementCb("def",
+                      [&](std::string_view text, std::span<std::string_view> attributes) {
+                        ASSERT_EQ(attributes.size(), 1);
+
+                        switch (cb_i++)
+                        {
+                          case 1:
+                            EXPECT_EQ(text, "foo");
+                            EXPECT_EQ(attributes[0], "b");
+                            break;
+
+                          case 4:
+                            EXPECT_EQ(text, "bar");
+                            EXPECT_EQ(attributes[0], "42");
+                            break;
+
+                          case 5:
+                            EXPECT_EQ(text, "");
+                            EXPECT_EQ(attributes[0], "43");
+                            break;
+
+                          default:
+                            FAIL() << "Error at callback #" << (cb_i - 1);
+                        }
+                      },
+                      {"a"});
 
   // Set up test xml data
   const auto buf = parser.buffer();
@@ -149,6 +140,8 @@ TEST(RsiParser, ParseTestXml)
     R"(  <RSol X="2.0" Y="4.0" Z="8.0" A="1.5" B="1.0" C="0.5" />)"
     R"(  <AIPos A1="0.1" A2="0.2" A3="0.3" A4="0.4" A5="0.5" A6="0.6" />)"
     R"(  <ASPos A1="1.0" A2="0.9" A3="0.8" A4="0.7" A5="0.6" A6="0.5" />)"
+    R"(  <ProgStatus R="3" />)"
+    R"(  <OvPro R="99" />)"
     R"(  <Delay D="42" />)"
     R"(  <IPOC>123645634563</IPOC>)"
     R"(</Rob>)";
@@ -199,6 +192,9 @@ TEST(RsiParser, ParseTestXml)
     EXPECT_EQ(rsi_state->cartesian_setpoint_pos.a, 1.5);
     EXPECT_EQ(rsi_state->cartesian_setpoint_pos.b, 1.0);
     EXPECT_EQ(rsi_state->cartesian_setpoint_pos.c, 0.5);
+
+    EXPECT_EQ(rsi_state->program_status, ProgramStatus::RUNNING);
+    EXPECT_DOUBLE_EQ(rsi_state->speed_scaling, 99);
 
     EXPECT_EQ(rsi_state->delay, 42);
     EXPECT_EQ(rsi_state->ipoc, 123645634563ul);
