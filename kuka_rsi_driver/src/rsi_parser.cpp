@@ -34,33 +34,9 @@
 #include "kuka_rsi_driver/rsi_parser.h"
 
 #include <array>
-#include <charconv>
-#include <fmt/format.h>
-#include <iostream>
 #include <rclcpp/rclcpp.hpp>
 #include <utility>
 
-template <typename T>
-T parseNumber(std::string_view str)
-{
-  T result;
-  const auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
-
-  if (ec == std::errc())
-  {
-    return result;
-  }
-  else if (ec == std::errc::invalid_argument)
-  {
-    throw std::runtime_error{fmt::format("'{}' is not a number", str)};
-  }
-  else if (ec == std::errc::result_out_of_range)
-  {
-    throw std::runtime_error{fmt::format("'{}' is out of range for given data type", str)};
-  }
-
-  throw std::runtime_error{fmt::format("Could not parse number '{}'", str)};
-}
 
 namespace kuka_rsi_driver {
 
@@ -337,56 +313,69 @@ RsiParser::RsiParser(rclcpp::Logger log, RsiFactory* rsi_factory, std::size_t bu
 
   m_xml_parser.addElementCb(
     "ASPos",
-    [this](std::string_view, std::span<std::string_view> attributes) {
-      onAxisElement(ValueType::POSITION_SETPOINT, attributes);
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(m_rsi_state->axis_setpoint_pos.begin(),
+                                 m_rsi_state->axis_setpoint_pos.end(),
+                                 text,
+                                 attributes);
     },
     axes);
   m_xml_parser.addElementCb(
     "AIPos",
-    [this](std::string_view, std::span<std::string_view> attributes) {
-      onAxisElement(ValueType::POSITION_ACTUAL, attributes);
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(
+        m_rsi_state->axis_actual_pos.begin(), m_rsi_state->axis_actual_pos.end(), text, attributes);
     },
     axes);
 
   m_xml_parser.addElementCb(
     "RSol",
-    [this](std::string_view, std::span<std::string_view> attributes) {
-      onCartesianElement(ValueType::POSITION_SETPOINT, attributes);
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(m_rsi_state->cartesian_setpoint_pos.begin(),
+                                 m_rsi_state->cartesian_setpoint_pos.end(),
+                                 text,
+                                 attributes);
     },
     cartesian_axes);
   m_xml_parser.addElementCb(
     "RIst",
-    [this](std::string_view, std::span<std::string_view> attributes) {
-      onCartesianElement(ValueType::POSITION_ACTUAL, attributes);
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(m_rsi_state->cartesian_actual_pos.begin(),
+                                 m_rsi_state->cartesian_actual_pos.end(),
+                                 text,
+                                 attributes);
     },
     cartesian_axes);
 
   m_xml_parser.addElementCb(
     "GearTorque",
-    [this](std::string_view, std::span<std::string_view> attributes) {
-      onAxisElement(ValueType::TORQUE, attributes);
+    [this](std::string_view text, std::span<std::string_view> attributes) {
+      setAttributeValues<double>(
+        m_rsi_state->axis_eff.begin(), m_rsi_state->axis_eff.end(), text, attributes);
     },
     axes);
 
   m_xml_parser.addElementCb("ProgStatus",
-                            [this](std::string_view, std::span<std::string_view> attributes) {
-                              onProgramState(attributes[0]);
+                            [this](std::string_view text, std::span<std::string_view> attributes) {
+                              setAttributeValue(m_rsi_state->program_status, text, attributes);
                             },
                             {"R"});
   m_xml_parser.addElementCb("OvPro",
-                            [this](std::string_view, std::span<std::string_view> attributes) {
-                              onOverwrite(attributes[0]);
+                            [this](std::string_view text, std::span<std::string_view> attributes) {
+                              setAttributeValue(m_rsi_state->speed_scaling, text, attributes);
                             },
                             {"R"});
 
-  m_xml_parser.addElementCb(
-    "Delay",
-    [this](std::string_view, std::span<std::string_view> attributes) { onDelay(attributes[0]); },
-    {"D"});
+  m_xml_parser.addElementCb("Delay",
+                            [this](std::string_view text, std::span<std::string_view> attributes) {
+                              setAttributeValue(m_rsi_state->delay, text, attributes);
+                            },
+                            {"D"});
 
-  m_xml_parser.addElementCb(
-    "IPOC",
-    [this](std::string_view text, std::span<std::string_view> attributes) { onIpoc(text); });
+  m_xml_parser.addElementCb("IPOC",
+                            [this](std::string_view text, std::span<std::string_view> attributes) {
+                              setTextValue<std::size_t>(m_rsi_state->ipoc, text, attributes);
+                            });
 }
 
 std::span<char> RsiParser::buffer() const
@@ -402,70 +391,6 @@ std::shared_ptr<RsiState> RsiParser::parseBuffer(std::size_t len)
   const auto result = m_rsi_state;
   m_rsi_state.reset();
   return result;
-}
-
-void RsiParser::onAxisElement(ValueType value_type, std::span<std::string_view> values)
-{
-  for (std::size_t i = 0; i < values.size(); ++i)
-  {
-    const double v = parseNumber<double>(values[i]);
-    switch (value_type)
-    {
-      case ValueType::POSITION_ACTUAL:
-        m_rsi_state->axis_actual_pos[i] = v;
-        break;
-
-      case ValueType::POSITION_SETPOINT:
-        m_rsi_state->axis_setpoint_pos[i] = v;
-        break;
-
-      case ValueType::TORQUE:
-        m_rsi_state->axis_eff[i] = v;
-        break;
-    }
-  }
-}
-
-void RsiParser::onCartesianElement(ValueType value_type, std::span<std::string_view> values)
-{
-  auto& pose = [&]() -> CartesianPose& {
-    switch (value_type)
-    {
-      case ValueType::POSITION_ACTUAL:
-        return m_rsi_state->cartesian_actual_pos;
-      case ValueType::POSITION_SETPOINT:
-        return m_rsi_state->cartesian_setpoint_pos;
-      default:
-        throw std::runtime_error{"Invalid value type"};
-    }
-  }();
-
-  pose.x = parseNumber<double>(values[0]);
-  pose.y = parseNumber<double>(values[1]);
-  pose.z = parseNumber<double>(values[2]);
-  pose.a = parseNumber<double>(values[3]);
-  pose.b = parseNumber<double>(values[4]);
-  pose.c = parseNumber<double>(values[5]);
-}
-
-void RsiParser::onOverwrite(std::string_view r)
-{
-  m_rsi_state->speed_scaling = parseNumber<double>(r);
-}
-
-void RsiParser::onProgramState(std::string_view r)
-{
-  m_rsi_state->program_status = static_cast<ProgramStatus>(parseNumber<long>(r));
-}
-
-void RsiParser::onDelay(std::string_view d)
-{
-  m_rsi_state->delay = parseNumber<std::size_t>(d);
-}
-
-void RsiParser::onIpoc(std::string_view text)
-{
-  m_rsi_state->ipoc = parseNumber<std::size_t>(text);
 }
 
 } // namespace kuka_rsi_driver

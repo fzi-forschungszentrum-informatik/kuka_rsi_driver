@@ -39,8 +39,10 @@
 #include "rsi_factory.h"
 
 #include <boost/pool/pool.hpp>
+#include <charconv>
 #include <cstdint>
 #include <expat.h>
+#include <fmt/format.h>
 #include <functional>
 #include <rclcpp/logger.hpp>
 #include <span>
@@ -53,8 +55,8 @@ namespace kuka_rsi_driver {
 /*! \brief Pool-based memory handler for the RSI xml parser
  *
  * Parsing XML requires memory allocations. This class provides a pool-based allocator that can
- * satisfy these in constant time, making them suitable for real-time contexts. Two memory pools are
- * used to efficently handle different allocation sizes.
+ * satisfy these in constant time, making them suitable for real-time contexts. Two memory pools
+ * are used to efficently handle different allocation sizes.
  */
 class XmlMemoryHandler
 {
@@ -235,19 +237,16 @@ public:
   [[nodiscard]] std::shared_ptr<RsiState> parseBuffer(std::size_t len);
 
 private:
-  enum class ValueType
-  {
-    POSITION_SETPOINT,
-    POSITION_ACTUAL,
-    TORQUE
-  };
-
-  void onAxisElement(ValueType value_type, std::span<std::string_view> values);
-  void onCartesianElement(ValueType value_type, std::span<std::string_view> values);
-  void onOverwrite(std::string_view r);
-  void onProgramState(std::string_view r);
-  void onDelay(std::string_view d);
-  void onIpoc(std::string_view text);
+  template <typename T, typename IteratorT>
+  void setAttributeValues(IteratorT first,
+                          IteratorT last,
+                          std::string_view text,
+                          std::span<std::string_view> attributes) const;
+  template <typename T>
+  void
+  setAttributeValue(T& dest, std::string_view text, std::span<std::string_view> attributes) const;
+  template <typename T>
+  void setTextValue(T& dest, std::string_view text, std::span<std::string_view> attributes) const;
 
   rclcpp::Logger m_log;
 
@@ -256,6 +255,89 @@ private:
   RsiFactory* m_rsi_factory;
   std::shared_ptr<RsiState> m_rsi_state;
 };
+
+} // namespace kuka_rsi_driver
+
+
+namespace kuka_rsi_driver {
+
+template <typename T>
+T parseNumber(std::string_view str)
+{
+  if constexpr (std::is_enum_v<T>)
+  {
+    const auto number = parseNumber<std::underlying_type_t<T>>(str);
+    return static_cast<T>(number);
+  }
+  else
+  {
+    T result;
+    const auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
+
+    if (ec == std::errc())
+    {
+      return static_cast<T>(result);
+    }
+    else if (ec == std::errc::invalid_argument)
+    {
+      throw std::runtime_error{fmt::format("'{}' is not a number", str)};
+    }
+    else if (ec == std::errc::result_out_of_range)
+    {
+      throw std::runtime_error{fmt::format("'{}' is out of range for given data type", str)};
+    }
+
+    throw std::runtime_error{fmt::format("Could not parse number '{}'", str)};
+  }
+}
+
+template <typename T, typename IteratorT>
+void RsiParser::setAttributeValues(IteratorT first,
+                                   IteratorT last,
+                                   std::string_view text,
+                                   std::span<std::string_view> attributes) const
+{
+  if (!text.empty())
+  {
+    throw std::runtime_error{"Element cannot have text"};
+  }
+
+  std::size_t i = 0;
+  for (auto it = first; it != last; ++it, ++i)
+  {
+    *it = parseNumber<T>(attributes[i]);
+  }
+}
+
+template <typename T>
+void RsiParser::setAttributeValue(T& dest,
+                                  std::string_view text,
+                                  std::span<std::string_view> attributes) const
+{
+  if (!text.empty())
+  {
+    throw std::runtime_error{"Element cannot have text"};
+  }
+  if (attributes.size() != 1)
+  {
+    throw std::runtime_error{"Unexpected number of attributes"};
+  }
+
+  dest = parseNumber<T>(attributes[0]);
+}
+
+template <typename T>
+void RsiParser::setTextValue(T& dest,
+                             std::string_view text,
+                             std::span<std::string_view> attributes) const
+{
+  if (!attributes.empty())
+  {
+    throw std::runtime_error{"Element cannot have attributes"};
+  }
+
+  dest = parseNumber<T>(text);
+}
 
 } // namespace kuka_rsi_driver
 

@@ -63,39 +63,129 @@ double JointArray::operator[](std::size_t i) const
   return m_values[i];
 }
 
+JointArray::Iterator JointArray::begin()
+{
+  return m_values.begin();
+}
+
+JointArray::ConstIterator JointArray::begin() const
+{
+  return m_values.begin();
+}
+
+JointArray::Iterator JointArray::end()
+{
+  return m_values.end();
+}
+
+JointArray::ConstIterator JointArray::end() const
+{
+  return m_values.end();
+}
+
 void JointArray::swap(JointArray& j)
 {
   std::swap(m_values, j.m_values);
 }
 
 CartesianPose::CartesianPose()
-  : x{std::numeric_limits<double>::quiet_NaN()}
-  , y{std::numeric_limits<double>::quiet_NaN()}
-  , z{std::numeric_limits<double>::quiet_NaN()}
-  , a{std::numeric_limits<double>::quiet_NaN()}
-  , b{std::numeric_limits<double>::quiet_NaN()}
-  , c{std::numeric_limits<double>::quiet_NaN()}
+  : m_values{std::numeric_limits<double>::quiet_NaN(),
+             std::numeric_limits<double>::quiet_NaN(),
+             std::numeric_limits<double>::quiet_NaN(),
+             std::numeric_limits<double>::quiet_NaN(),
+             std::numeric_limits<double>::quiet_NaN(),
+             std::numeric_limits<double>::quiet_NaN()}
 {
 }
 
 CartesianPose::CartesianPose(double x, double y, double z, double a, double b, double c)
-  : x{x}
-  , y{y}
-  , z{z}
-  , a{a}
-  , b{b}
-  , c{c}
+  : m_values{x, y, z, a, b, c}
 {
+}
+
+double& CartesianPose::x()
+{
+  return m_values[0];
+}
+double CartesianPose::x() const
+{
+  return m_values[0];
+}
+
+double& CartesianPose::y()
+{
+  return m_values[1];
+}
+double CartesianPose::y() const
+{
+  return m_values[1];
+}
+
+double& CartesianPose::z()
+{
+  return m_values[2];
+}
+double CartesianPose::z() const
+{
+  return m_values[2];
+}
+
+double& CartesianPose::a()
+{
+  return m_values[3];
+}
+double CartesianPose::a() const
+{
+  return m_values[3];
+}
+
+double& CartesianPose::b()
+{
+  return m_values[4];
+}
+double CartesianPose::b() const
+{
+  return m_values[4];
+}
+
+double& CartesianPose::c()
+{
+  return m_values[5];
+}
+
+double CartesianPose::c() const
+{
+  return m_values[5];
+}
+
+CartesianPose::Iterator CartesianPose::begin()
+{
+  return m_values.begin();
+}
+
+CartesianPose::ConstIterator CartesianPose::begin() const
+{
+  return m_values.begin();
+}
+
+CartesianPose::Iterator CartesianPose::end()
+{
+  return m_values.end();
+}
+
+CartesianPose::ConstIterator CartesianPose::end() const
+{
+  return m_values.end();
 }
 
 void CartesianPose::getQuaternion(double& x, double& y, double& z, double& w) const
 {
-  const double sa = std::sin(a * M_PI / 360);
-  const double ca = std::cos(a * M_PI / 360);
-  const double sb = std::sin(b * M_PI / 360);
-  const double cb = std::cos(b * M_PI / 360);
-  const double sc = std::sin(c * M_PI / 360);
-  const double cc = std::cos(c * M_PI / 360);
+  const double sa = std::sin(m_values[3] * M_PI / 360);
+  const double ca = std::cos(m_values[3] * M_PI / 360);
+  const double sb = std::sin(m_values[4] * M_PI / 360);
+  const double cb = std::cos(m_values[4] * M_PI / 360);
+  const double sc = std::sin(m_values[5] * M_PI / 360);
+  const double cc = std::cos(m_values[5] * M_PI / 360);
 
   x = ca * cb * sc - sa * sb * cc;
   y = ca * sb * cc + sa * cb * sc;

@@ -179,19 +179,19 @@ TEST(RsiParser, ParseTestXml)
     EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[4], 0.6);
     EXPECT_DOUBLE_EQ(rsi_state->axis_setpoint_pos[5], 0.5);
 
-    EXPECT_EQ(rsi_state->cartesian_actual_pos.x, 1.0);
-    EXPECT_EQ(rsi_state->cartesian_actual_pos.y, 2.0);
-    EXPECT_EQ(rsi_state->cartesian_actual_pos.z, 3.0);
-    EXPECT_EQ(rsi_state->cartesian_actual_pos.a, 0.5);
-    EXPECT_EQ(rsi_state->cartesian_actual_pos.b, 1.0);
-    EXPECT_EQ(rsi_state->cartesian_actual_pos.c, 1.5);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.x(), 1.0);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.y(), 2.0);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.z(), 3.0);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.a(), 0.5);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.b(), 1.0);
+    EXPECT_EQ(rsi_state->cartesian_actual_pos.c(), 1.5);
 
-    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.x, 2.0);
-    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.y, 4.0);
-    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.z, 8.0);
-    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.a, 1.5);
-    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.b, 1.0);
-    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.c, 0.5);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.x(), 2.0);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.y(), 4.0);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.z(), 8.0);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.a(), 1.5);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.b(), 1.0);
+    EXPECT_EQ(rsi_state->cartesian_setpoint_pos.c(), 0.5);
 
     EXPECT_EQ(rsi_state->program_status, ProgramStatus::RUNNING);
     EXPECT_DOUBLE_EQ(rsi_state->speed_scaling, 99);

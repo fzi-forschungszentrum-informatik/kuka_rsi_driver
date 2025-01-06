@@ -46,12 +46,21 @@ class JointArray
 public:
   JointArray();
 
+  using Iterator      = std::array<double, 6>::iterator;
+  using ConstIterator = std::array<double, 6>::const_iterator;
+
   std::size_t size() const;
 
   void fill(double v);
 
   double& operator[](std::size_t i);
   double operator[](std::size_t i) const;
+
+  Iterator begin();
+  ConstIterator begin() const;
+
+  Iterator end();
+  ConstIterator end() const;
 
   void swap(JointArray& j);
 
@@ -65,14 +74,37 @@ public:
   CartesianPose();
   CartesianPose(double x, double y, double z, double a, double b, double c);
 
-  double x;
-  double y;
-  double z;
-  double a;
-  double b;
-  double c;
+  using Iterator      = std::array<double, 6>::iterator;
+  using ConstIterator = std::array<double, 6>::const_iterator;
+
+  double& x();
+  double x() const;
+
+  double& y();
+  double y() const;
+
+  double& z();
+  double z() const;
+
+  double& a();
+  double a() const;
+
+  double& b();
+  double b() const;
+
+  double& c();
+  double c() const;
+
+  Iterator begin();
+  ConstIterator begin() const;
+
+  Iterator end();
+  ConstIterator end() const;
 
   void getQuaternion(double& x, double& y, double& z, double& w) const;
+
+private:
+  std::array<double, 6> m_values;
 };
 
 enum class ProgramStatus : std::uint8_t
