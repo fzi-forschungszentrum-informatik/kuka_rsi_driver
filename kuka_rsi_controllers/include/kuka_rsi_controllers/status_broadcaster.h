@@ -39,7 +39,7 @@
 #include <kuka_rsi_interfaces/msg/robot_state.hpp>
 #include <memory>
 #include <rclcpp/publisher.hpp>
-#include <realtime_tools/realtime_publisher.h>
+#include <realtime_tools/realtime_publisher.hpp>
 #include <std_msgs/msg/float64.hpp>
 
 namespace kuka_rsi_controllers {
