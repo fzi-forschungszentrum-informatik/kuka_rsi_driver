@@ -2,5 +2,5 @@ repositories:
   # Required for integration tests
   kuka_experimental:
     type: git
-    url: https://github.com/StoglRobotics-forks/kuka_experimental
-    version: rolling-overview
+    url: https://github.com/RobertWilbrandt/kuka_experimental.git
+    version: rolling
