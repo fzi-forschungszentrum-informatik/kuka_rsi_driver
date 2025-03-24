@@ -40,7 +40,7 @@
 
 namespace kuka_rsi_driver {
 
-InterfaceConfig::InterfaceConfig(const hardware_interface::HardwareInfo& info)
+RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info)
 {
   for (std::size_t i = 0; i < info.joints.size(); ++i)
   {
@@ -50,10 +50,14 @@ InterfaceConfig::InterfaceConfig(const hardware_interface::HardwareInfo& info)
                     fmt::format("joint {}", i),
                     {hardware_interface::HW_IF_POSITION, hardware_interface::HW_IF_EFFORT},
                     {hardware_interface::HW_IF_POSITION});
-    m_joint_command_position_interfaces.push_back(joint.name + "/" +
-                                                  joint.command_interfaces[0].name);
-    m_joint_state_position_interfaces.push_back(joint.name + "/" + joint.state_interfaces[0].name);
-    m_joint_state_effort_interfaces.push_back(joint.name + "/" + joint.state_interfaces[1].name);
+
+    m_interface_config.joint_position_command_interfaces.push_back(
+      joint.name + "/" + joint.command_interfaces[0].name);
+
+    m_interface_config.joint_position_state_interfaces.push_back(joint.name + "/" +
+                                                                 joint.state_interfaces[0].name);
+    m_interface_config.joint_effort_state_interfaces.push_back(joint.name + "/" +
+                                                               joint.state_interfaces[1].name);
   }
 
   // Verify sensors
@@ -75,7 +79,7 @@ InterfaceConfig::InterfaceConfig(const hardware_interface::HardwareInfo& info)
   std::transform(
     info.sensors[0].state_interfaces.cbegin(),
     info.sensors[0].state_interfaces.cend(),
-    std::back_inserter(m_tcp_sensor_interfaces),
+    m_interface_config.tcp_state_interfaces.begin(),
     [&](const auto& interface) { return info.sensors[0].name + '/' + interface.name; });
 
   // Verify gpios
@@ -86,47 +90,23 @@ InterfaceConfig::InterfaceConfig(const hardware_interface::HardwareInfo& info)
   }
 
   verifyComponent(info.gpios[0], "robot state", {"program_state"}, {});
-  m_robot_state_interface = info.gpios[0].name + "/" + info.gpios[0].state_interfaces[0].name;
+  m_interface_config.robot_state_state_interface =
+    info.gpios[0].name + "/" + info.gpios[0].state_interfaces[0].name;
 
   verifyComponent(info.gpios[1], "speed scaling", {"speed_scaling_factor"}, {});
-  m_speed_scaling_interface = info.gpios[1].name + "/" + info.gpios[1].state_interfaces[0].name;
+  m_interface_config.speed_scaling_state_interface =
+    info.gpios[1].name + "/" + info.gpios[1].state_interfaces[0].name;
 }
 
-const std::vector<std::string>& InterfaceConfig::jointStatePositionInterfaces() const
+const InterfaceConfig& RsiConfig::interfaceConfig() const
 {
-  return m_joint_state_position_interfaces;
+  return m_interface_config;
 }
 
-const std::vector<std::string>& InterfaceConfig::jointStateEffortInterfaces() const
-{
-  return m_joint_state_effort_interfaces;
-}
-
-const std::vector<std::string>& InterfaceConfig::jointCommandPositionInterfaces() const
-{
-  return m_joint_command_position_interfaces;
-}
-
-const std::vector<std::string>& InterfaceConfig::tcpSensorInterfaces() const
-{
-  return m_tcp_sensor_interfaces;
-}
-
-const std::string& InterfaceConfig::robotStateInterface() const
-{
-  return m_robot_state_interface;
-}
-
-const std::string& InterfaceConfig::speedScalingInterface() const
-{
-  return m_speed_scaling_interface;
-}
-
-void InterfaceConfig::verifyComponent(
-  const hardware_interface::ComponentInfo& component,
-  const std::string& component_function,
-  const std::vector<std::string>& expected_state_interfaces,
-  const std::vector<std::string>& expected_command_interfaces) const
+void RsiConfig::verifyComponent(const hardware_interface::ComponentInfo& component,
+                                const std::string& component_function,
+                                const std::vector<std::string>& expected_state_interfaces,
+                                const std::vector<std::string>& expected_command_interfaces) const
 {
   if (!std::equal(component.command_interfaces.cbegin(),
                   component.command_interfaces.cend(),

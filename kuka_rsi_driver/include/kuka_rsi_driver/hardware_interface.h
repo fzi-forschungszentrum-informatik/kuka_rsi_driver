@@ -73,7 +73,7 @@ public:
 private:
   void setState(const RsiState& state);
 
-  std::optional<InterfaceConfig> m_interface_config;
+  std::optional<RsiConfig> m_rsi_config;
   std::optional<RsiFactory> m_rsi_factory;
   std::optional<ControlBuffer> m_control_buf;
   std::optional<ControlThread> m_control_thread;

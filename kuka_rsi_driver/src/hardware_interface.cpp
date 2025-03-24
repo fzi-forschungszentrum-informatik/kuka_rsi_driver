@@ -54,7 +54,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
 
   try
   {
-    m_interface_config.emplace(info_);
+    m_rsi_config.emplace(info_);
 
     m_rsi_factory.emplace();
     m_control_buf.emplace(*m_rsi_factory);
@@ -112,11 +112,11 @@ KukaRsiHardwareInterface::on_configure(const rclcpp_lifecycle::State& previous_s
     {
       setState(*state);
 
-      const auto& joint_command_position_interfaces =
-        m_interface_config->jointCommandPositionInterfaces();
+      const auto& joint_position_command_interfaces =
+        m_rsi_config->interfaceConfig().joint_position_command_interfaces;
       for (std::size_t i = 0; i < state->axis_actual_pos.size(); ++i)
       {
-        set_command(joint_command_position_interfaces[i], state->axis_actual_pos[i] * M_PI / 180.);
+        set_command(joint_position_command_interfaces[i], state->axis_actual_pos[i] * M_PI / 180.);
       }
 
       m_control_buf->zeroOffsets();
@@ -177,7 +177,7 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
   if (current_state == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)
   {
     const auto& joint_command_position_interfaces =
-      m_interface_config->jointCommandPositionInterfaces();
+      m_rsi_config->interfaceConfig().joint_position_command_interfaces;
     for (std::size_t i = 0; i < joint_command_position_interfaces.size(); ++i)
     {
       cmd->axis_command_pos[i] = get_command(joint_command_position_interfaces[i]) * 180. / M_PI;
@@ -200,37 +200,38 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
 
 void KukaRsiHardwareInterface::setState(const RsiState& state)
 {
+  const auto& interface_config = m_rsi_config->interfaceConfig();
+
   // Joint states
-  const auto& joint_position_interfaces = m_interface_config->jointStatePositionInterfaces();
-  const auto& joint_effort_interfaces   = m_interface_config->jointStateEffortInterfaces();
   for (std::size_t i = 0; i < state.axis_actual_pos.size(); ++i)
   {
-    set_state(joint_position_interfaces[i], state.axis_actual_pos[i] * M_PI / 180.);
-    set_state(joint_effort_interfaces[i], state.axis_eff[i]);
+    set_state(interface_config.joint_position_state_interfaces[i],
+              state.axis_actual_pos[i] * M_PI / 180.);
+    set_state(interface_config.joint_effort_state_interfaces[i], state.axis_eff[i]);
   }
 
   // TCP
-  const auto& tcp_interfaces = m_interface_config->tcpSensorInterfaces();
-  set_state(tcp_interfaces[0], state.cartesian_actual_pos.x() / 1000);
-  set_state(tcp_interfaces[1], state.cartesian_actual_pos.y() / 1000);
-  set_state(tcp_interfaces[2], state.cartesian_actual_pos.z() / 1000);
+  set_state(interface_config.tcp_state_interfaces[0], state.cartesian_actual_pos.x() / 1000);
+  set_state(interface_config.tcp_state_interfaces[1], state.cartesian_actual_pos.y() / 1000);
+  set_state(interface_config.tcp_state_interfaces[2], state.cartesian_actual_pos.z() / 1000);
 
   std::array<double, 4> tcp_rpy;
   state.cartesian_actual_pos.getQuaternion(tcp_rpy[0], tcp_rpy[1], tcp_rpy[2], tcp_rpy[3]);
   for (std::size_t i = 0; i < tcp_rpy.size(); ++i)
   {
-    set_state(tcp_interfaces[i + 3], tcp_rpy[i]);
+    set_state(interface_config.tcp_state_interfaces[i + 3], tcp_rpy[i]);
   }
 
   // Robot state
-  set_state(m_interface_config->robotStateInterface(), static_cast<double>(state.program_status));
+  set_state(interface_config.robot_state_state_interface,
+            static_cast<double>(state.program_status));
   if (state.program_status == ProgramStatus::RUNNING)
   {
-    set_state(m_interface_config->speedScalingInterface(), state.speed_scaling / 100);
+    set_state(interface_config.speed_scaling_state_interface, state.speed_scaling / 100);
   }
   else
   {
-    set_state(m_interface_config->speedScalingInterface(), 0.0);
+    set_state(interface_config.speed_scaling_state_interface, 0.0);
   }
 }
 
