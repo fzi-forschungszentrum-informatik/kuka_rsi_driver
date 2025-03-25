@@ -43,6 +43,16 @@
 
 namespace kuka_rsi_driver {
 
+/*! \brief Mapping between internal structure and interface
+ */
+struct InterfaceIndex
+{
+  //! Index in RSI state/command structure
+  std::size_t index;
+  //! Fully qualified interface name
+  std::string name;
+};
+
 /*! \brief Definition of all state and command interfaces
  */
 struct InterfaceConfig
@@ -61,6 +71,9 @@ struct InterfaceConfig
   std::string robot_state_state_interface;
   //! Fully qualified name of speed scaling state interface
   std::string speed_scaling_state_interface;
+
+  //! All directly passed-through interfaces
+  std::vector<InterfaceIndex> passthrough_state_interfaces;
 };
 
 struct RsiIndex

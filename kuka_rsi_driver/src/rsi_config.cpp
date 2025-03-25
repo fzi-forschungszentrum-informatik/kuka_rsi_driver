@@ -191,8 +191,16 @@ void RsiConfig::parsePassthrough(const hardware_interface::ComponentInfo& compon
 
     const auto state_index = m_receive_config.num_passthrough_bool++;
 
-    RCLCPP_INFO(m_log, "  %s.%s => S[%zu]", tag_name.c_str(), attribute_name.c_str(), state_index);
+    RCLCPP_INFO(m_log,
+                "  %s.%s => S[%zu] => %s/%s",
+                tag_name.c_str(),
+                attribute_name.c_str(),
+                state_index,
+                component.name.c_str(),
+                state_interface.name.c_str());
     tag.indices.push_back(RsiIndex{attribute_name, state_index});
+    m_interface_config.passthrough_state_interfaces.emplace_back(
+      state_index, component.name + "/" + state_interface.name);
   }
 
   m_receive_config.tags.push_back(tag);

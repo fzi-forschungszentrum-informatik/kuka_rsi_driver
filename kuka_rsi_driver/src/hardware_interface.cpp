@@ -212,6 +212,13 @@ void KukaRsiHardwareInterface::setState(const RsiState& state)
   {
     set_state(interface_config.speed_scaling_state_interface, 0.0);
   }
+
+  // Passthrough interfaces
+  for (const auto& passthrough_index : interface_config.passthrough_state_interfaces)
+  {
+    set_state(passthrough_index.name,
+              state.passthrough.values_bool[passthrough_index.index] ? 1.0 : 0.0);
+  }
 }
 
 } // namespace kuka_rsi_driver
