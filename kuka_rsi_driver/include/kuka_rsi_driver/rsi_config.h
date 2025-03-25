@@ -72,8 +72,10 @@ struct InterfaceConfig
   //! Fully qualified name of speed scaling state interface
   std::string speed_scaling_state_interface;
 
-  //! All directly passed-through interfaces
+  //! All directly passed-through state interfaces
   std::vector<InterfaceIndex> passthrough_state_interfaces;
+  //! All directly passed-through command interfaces
+  std::vector<InterfaceIndex> passthrough_command_interfaces;
 };
 
 struct RsiIndex
@@ -135,6 +137,12 @@ public:
    */
   const TransmissionConfig& receiveTransmissionConfig() const;
 
+  /*! \brief RSI transmission config for signal sending
+   *
+   * \returns RSI signal sending transmission config
+   */
+  const TransmissionConfig& sendTransmissionConfig() const;
+
 private:
   std::string requiredHardwareParam(const hardware_interface::HardwareInfo& info,
                                     const std::string& name) const;
@@ -155,6 +163,7 @@ private:
   InterfaceConfig m_interface_config;
 
   TransmissionConfig m_receive_config;
+  TransmissionConfig m_send_config;
 };
 
 } // namespace kuka_rsi_driver

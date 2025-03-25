@@ -90,8 +90,12 @@ void TextWriter::writeNumber(double v)
   m_head = ptr;
 }
 
-RsiWriter::RsiWriter(const std::string& sentype, rclcpp::Logger log, std::size_t buf_size)
+RsiWriter::RsiWriter(const std::string& sentype,
+                     const TransmissionConfig& config,
+                     rclcpp::Logger log,
+                     std::size_t buf_size)
   : m_log{std::move(log)}
+  , m_config{config}
   , m_sentype{sentype}
   , m_writer{m_log}
 {
@@ -112,6 +116,21 @@ std::size_t RsiWriter::writeCommand(const RsiCommand& cmd, std::size_t ipoc, std
     m_writer.writeText("=\"");
     m_writer.writeNumber(cmd.axis_command_pos[i]);
     m_writer.writeText("\" ");
+  }
+
+  for (const auto& tag : m_config.tags)
+  {
+    m_writer.writeText("/><");
+    m_writer.writeText(tag.name);
+    m_writer.writeText(" ");
+
+    for (const auto& index : tag.indices)
+    {
+      m_writer.writeText(index.name);
+      m_writer.writeText("=\"");
+      m_writer.writeText(cmd.passthrough.values_bool[index.index] ? "1" : "0");
+      m_writer.writeText("\" ");
+    }
   }
 
   m_writer.writeText("/><IPOC>");

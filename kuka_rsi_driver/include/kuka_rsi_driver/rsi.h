@@ -159,11 +159,14 @@ public:
 class RsiCommand
 {
 public:
-  RsiCommand();
+  explicit RsiCommand(std::size_t num_passthrough_bool);
 
   std::chrono::steady_clock::time_point write_time;
 
   JointArray axis_command_pos;
+
+  //! Additional values that are directly tunneled from command interfaces to RSI attributes
+  RsiPassthrough passthrough;
 
 private:
 };

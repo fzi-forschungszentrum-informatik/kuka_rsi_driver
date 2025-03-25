@@ -54,9 +54,9 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
 
   try
   {
-    m_rsi_config.emplace(info_, get_logger());
+    m_rsi_config = std::make_shared<RsiConfig>(info_, get_logger());
 
-    m_rsi_factory.emplace(*m_rsi_config);
+    m_rsi_factory.emplace(m_rsi_config);
     m_control_buf.emplace(*m_rsi_factory);
 
     m_control_thread.emplace(*m_rsi_config, &(*m_control_buf), &(*m_rsi_factory), get_logger());
@@ -160,6 +160,14 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
     for (std::size_t i = 0; i < joint_command_position_interfaces.size(); ++i)
     {
       cmd->axis_command_pos[i] = get_command(joint_command_position_interfaces[i]) * 180. / M_PI;
+    }
+
+    // Passthrough interfaces
+    const auto& interface_config = m_rsi_config->interfaceConfig();
+    for (const auto& passthrough_index : interface_config.passthrough_command_interfaces)
+    {
+      cmd->passthrough.values_bool[passthrough_index.index] =
+        get_command(passthrough_index.name) == 1.0 ? true : false;
     }
   }
 

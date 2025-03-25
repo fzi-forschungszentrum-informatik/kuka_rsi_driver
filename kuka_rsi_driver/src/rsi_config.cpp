@@ -145,6 +145,11 @@ const TransmissionConfig& RsiConfig::receiveTransmissionConfig() const
   return m_receive_config;
 }
 
+const TransmissionConfig& RsiConfig::sendTransmissionConfig() const
+{
+  return m_send_config;
+}
+
 std::string RsiConfig::requiredHardwareParam(const hardware_interface::HardwareInfo& info,
                                              const std::string& name) const
 {
@@ -160,12 +165,7 @@ std::string RsiConfig::requiredHardwareParam(const hardware_interface::HardwareI
 
 void RsiConfig::parsePassthrough(const hardware_interface::ComponentInfo& component)
 {
-  if (!component.command_interfaces.empty())
-  {
-    throw std::runtime_error{"Command interface passthrough not yet implemented"};
-  }
-
-  if (component.state_interfaces.empty())
+  if (component.state_interfaces.empty() && component.command_interfaces.empty())
   {
     return;
   }
@@ -179,31 +179,63 @@ void RsiConfig::parsePassthrough(const hardware_interface::ComponentInfo& compon
 
   RCLCPP_INFO(m_log, "Passthrough for component %s:", component.name.c_str());
 
-  RsiTag tag{tag_name, {}};
-  for (const auto& state_interface : component.state_interfaces)
+  if (!component.state_interfaces.empty())
   {
-    std::string attribute_name = state_interface.name;
-    if (const auto rsi_name_it = state_interface.parameters.find("rsi_name");
-        rsi_name_it != state_interface.parameters.end())
+    RsiTag tag{tag_name, {}};
+    for (const auto& state_interface : component.state_interfaces)
     {
-      attribute_name = rsi_name_it->second;
+      std::string attribute_name = state_interface.name;
+      if (const auto rsi_name_it = state_interface.parameters.find("rsi_name");
+          rsi_name_it != state_interface.parameters.end())
+      {
+        attribute_name = rsi_name_it->second;
+      }
+
+      const auto state_index = m_receive_config.num_passthrough_bool++;
+
+      RCLCPP_INFO(m_log,
+                  "  %s.%s => S[%zu] => %s/%s",
+                  tag_name.c_str(),
+                  attribute_name.c_str(),
+                  state_index,
+                  component.name.c_str(),
+                  state_interface.name.c_str());
+      tag.indices.push_back(RsiIndex{attribute_name, state_index});
+      m_interface_config.passthrough_state_interfaces.emplace_back(
+        state_index, component.name + "/" + state_interface.name);
     }
 
-    const auto state_index = m_receive_config.num_passthrough_bool++;
-
-    RCLCPP_INFO(m_log,
-                "  %s.%s => S[%zu] => %s/%s",
-                tag_name.c_str(),
-                attribute_name.c_str(),
-                state_index,
-                component.name.c_str(),
-                state_interface.name.c_str());
-    tag.indices.push_back(RsiIndex{attribute_name, state_index});
-    m_interface_config.passthrough_state_interfaces.emplace_back(
-      state_index, component.name + "/" + state_interface.name);
+    m_receive_config.tags.push_back(tag);
   }
 
-  m_receive_config.tags.push_back(tag);
+  if (!component.command_interfaces.empty())
+  {
+    RsiTag tag{tag_name, {}};
+    for (const auto& command_interface : component.command_interfaces)
+    {
+      std::string attribute_name = command_interface.name;
+      if (const auto rsi_name_it = command_interface.parameters.find("rsi_name");
+          rsi_name_it != command_interface.parameters.end())
+      {
+        attribute_name = rsi_name_it->second;
+      }
+
+      const auto state_index = m_send_config.num_passthrough_bool++;
+
+      RCLCPP_INFO(m_log,
+                  "  %s/%s => C[%zu] => %s.%s",
+                  component.name.c_str(),
+                  command_interface.name.c_str(),
+                  state_index,
+                  tag_name.c_str(),
+                  attribute_name.c_str());
+      tag.indices.push_back(RsiIndex{attribute_name, state_index});
+      m_interface_config.passthrough_command_interfaces.emplace_back(
+        state_index, component.name + "/" + command_interface.name);
+    }
+
+    m_send_config.tags.push_back(tag);
+  }
 }
 
 void RsiConfig::verifyComponent(const hardware_interface::ComponentInfo& component,

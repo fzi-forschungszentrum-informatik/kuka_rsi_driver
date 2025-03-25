@@ -43,6 +43,7 @@
 #include "tracing.h"
 
 #include <hardware_interface/system_interface.hpp>
+#include <memory>
 #include <optional>
 #include <rclcpp_lifecycle/state.hpp>
 #include <vector>
@@ -73,7 +74,7 @@ public:
 private:
   void setState(const RsiState& state);
 
-  std::optional<RsiConfig> m_rsi_config;
+  std::shared_ptr<RsiConfig> m_rsi_config;
   std::optional<RsiFactory> m_rsi_factory;
   std::optional<ControlBuffer> m_control_buf;
   std::optional<ControlThread> m_control_thread;

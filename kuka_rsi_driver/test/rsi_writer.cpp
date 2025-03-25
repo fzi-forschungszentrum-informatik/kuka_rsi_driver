@@ -41,10 +41,10 @@ TEST(RsiWriter, WriteTestXml)
 {
   const auto log = rclcpp::get_logger("rsi_writer");
 
-  RsiWriter writer{"TestSenType", log};
+  RsiWriter writer{"TestSenType", TransmissionConfig{}, log};
 
   // Create test command
-  RsiCommand cmd;
+  RsiCommand cmd{0};
   for (std::size_t i = 0; i < cmd.axis_command_pos.size(); ++i)
   {
     cmd.axis_command_pos[i] = i;

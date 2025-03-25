@@ -205,7 +205,8 @@ RsiState::RsiState(std::size_t num_passthrough_bool)
 {
 }
 
-RsiCommand::RsiCommand()
+RsiCommand::RsiCommand(std::size_t num_passthrough_bool)
+  : passthrough{num_passthrough_bool}
 {
   axis_command_pos.fill(0.0);
 }
@@ -216,6 +217,11 @@ void interpolate(const RsiCommand& c1, const RsiCommand& c2, double alpha, RsiCo
   {
     dest.axis_command_pos[i] =
       (1 - alpha) * c1.axis_command_pos[i] + alpha * c2.axis_command_pos[i];
+  }
+
+  for (std::size_t i = 0; i < c1.passthrough.values_bool.size(); ++i)
+  {
+    dest.passthrough.values_bool[i] = c1.passthrough.values_bool[i];
   }
 }
 

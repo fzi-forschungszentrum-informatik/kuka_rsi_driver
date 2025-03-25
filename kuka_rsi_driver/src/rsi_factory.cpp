@@ -44,13 +44,14 @@ RsiFactory::RsiFactory(std::size_t cyclic_buf_size)
 
   for (std::size_t i = 0; i < cyclic_buf_size; ++i)
   {
-    m_cmd_buf.emplace_back(std::make_shared<RsiCommand>());
+    m_cmd_buf.emplace_back(std::make_shared<RsiCommand>(0));
     m_state_buf.emplace_back(std::make_shared<RsiState>(0));
   }
 }
 
-RsiFactory::RsiFactory(const RsiConfig& config, std::size_t cyclic_buf_size)
-  : m_cmd_i{0}
+RsiFactory::RsiFactory(std::shared_ptr<RsiConfig> config, std::size_t cyclic_buf_size)
+  : m_rsi_config{std::move(config)}
+  , m_cmd_i{0}
   , m_state_i{0}
 {
   m_cmd_buf.reserve(cyclic_buf_size);
@@ -58,15 +59,16 @@ RsiFactory::RsiFactory(const RsiConfig& config, std::size_t cyclic_buf_size)
 
   for (std::size_t i = 0; i < cyclic_buf_size; ++i)
   {
-    m_cmd_buf.emplace_back(std::make_shared<RsiCommand>());
+    m_cmd_buf.emplace_back(
+      std::make_shared<RsiCommand>(m_rsi_config->sendTransmissionConfig().num_passthrough_bool));
     m_state_buf.emplace_back(
-      std::make_shared<RsiState>(config.receiveTransmissionConfig().num_passthrough_bool));
+      std::make_shared<RsiState>(m_rsi_config->receiveTransmissionConfig().num_passthrough_bool));
   }
 }
 
 RsiCommand RsiFactory::createCommand() const
 {
-  return RsiCommand{};
+  return RsiCommand{m_rsi_config->sendTransmissionConfig().num_passthrough_bool};
 }
 
 std::shared_ptr<RsiCommand> RsiFactory::createCyclicCommand()

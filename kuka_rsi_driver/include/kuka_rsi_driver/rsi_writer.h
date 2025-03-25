@@ -36,6 +36,7 @@
 #define KUKA_RSI_DRIVER_RSI_WRITER_H_INCLUDED
 
 #include "rsi.h"
+#include "rsi_config.h"
 
 #include <cstdint>
 #include <rclcpp/logger.hpp>
@@ -72,7 +73,10 @@ private:
 class RsiWriter
 {
 public:
-  RsiWriter(const std::string& sentype, rclcpp::Logger log, std::size_t buf_size = 1024);
+  RsiWriter(const std::string& sentype,
+            const TransmissionConfig& config,
+            rclcpp::Logger log,
+            std::size_t buf_size = 1024);
 
   [[nodiscard]] std::size_t
   writeCommand(const RsiCommand& cmd, std::size_t ipoc, std::span<char> target);
@@ -81,6 +85,7 @@ private:
   rclcpp::Logger m_log;
 
   std::string m_sentype;
+  TransmissionConfig m_config;
 
   TextWriter m_writer;
 };
