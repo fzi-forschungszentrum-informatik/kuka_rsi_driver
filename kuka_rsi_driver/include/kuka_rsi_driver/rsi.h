@@ -38,6 +38,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <vector>
 
 namespace kuka_rsi_driver {
 
@@ -113,10 +114,28 @@ enum class ProgramStatus : std::uint8_t
   STOPPED = 4
 };
 
+/*! \brief Values that are transparently tunneled between interfaces and RSI attributes
+ */
+struct RsiPassthrough
+{
+  /*! \brief Pre-Allocate passthrough storage of given size
+   *
+   * \param num_bool Number of boolean values to pre-allocate
+   */
+  explicit RsiPassthrough(std::size_t num_bool);
+
+  //! Passed-through boolean values
+  std::vector<bool> values_bool;
+};
+
 class RsiState
 {
 public:
-  explicit RsiState();
+  /*! \brief Pre-Allocate a new state object
+   *
+   * \param num_passthrough_bool Number of boolean passthrough values to pre-allocate
+   */
+  explicit RsiState(std::size_t num_passthrough_bool);
 
   JointArray axis_actual_pos;
   JointArray axis_setpoint_pos;
@@ -132,6 +151,9 @@ public:
   double speed_scaling;
 
   ProgramStatus program_status;
+
+  //! Additional values that are directly tunneled from RSI attributes to state interfaces
+  RsiPassthrough passthrough;
 };
 
 class RsiCommand

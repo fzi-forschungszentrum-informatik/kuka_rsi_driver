@@ -40,6 +40,11 @@
 
 namespace kuka_rsi_driver {
 
+TransmissionConfig::TransmissionConfig()
+  : num_passthrough_bool{0}
+{
+}
+
 RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info)
 {
   for (std::size_t i = 0; i < info.joints.size(); ++i)
@@ -101,6 +106,11 @@ RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info)
 const InterfaceConfig& RsiConfig::interfaceConfig() const
 {
   return m_interface_config;
+}
+
+const TransmissionConfig& RsiConfig::receiveTransmissionConfig() const
+{
+  return m_receive_config;
 }
 
 void RsiConfig::verifyComponent(const hardware_interface::ComponentInfo& component,

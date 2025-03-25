@@ -47,7 +47,22 @@ RsiFactory::RsiFactory(std::size_t cyclic_buf_size)
   for (std::size_t i = 0; i < cyclic_buf_size; ++i)
   {
     m_cmd_buf.emplace_back(std::make_shared<RsiCommand>());
-    m_state_buf.emplace_back(std::make_shared<RsiState>());
+    m_state_buf.emplace_back(std::make_shared<RsiState>(0));
+  }
+}
+
+RsiFactory::RsiFactory(const RsiConfig& config, std::size_t cyclic_buf_size)
+  : m_cmd_i{0}
+  , m_state_i{0}
+{
+  m_cmd_buf.reserve(cyclic_buf_size);
+  m_state_buf.reserve(cyclic_buf_size);
+
+  for (std::size_t i = 0; i < cyclic_buf_size; ++i)
+  {
+    m_cmd_buf.emplace_back(std::make_shared<RsiCommand>());
+    m_state_buf.emplace_back(
+      std::make_shared<RsiState>(config.receiveTransmissionConfig().num_passthrough_bool));
   }
 }
 

@@ -193,9 +193,15 @@ void CartesianPose::getQuaternion(double& x, double& y, double& z, double& w) co
   w = ca * cb * cc + sa * sb * sc;
 }
 
-RsiState::RsiState()
+RsiPassthrough::RsiPassthrough(std::size_t num_bool)
+{
+  values_bool.resize(num_bool);
+}
+
+RsiState::RsiState(std::size_t num_passthrough_bool)
   : delay{0}
   , ipoc{0}
+  , passthrough{num_passthrough_bool}
 {
 }
 

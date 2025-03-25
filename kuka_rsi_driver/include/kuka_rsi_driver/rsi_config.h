@@ -62,12 +62,37 @@ struct InterfaceConfig
   std::string speed_scaling_state_interface;
 };
 
+/*! \brief Definition of signals in one communication direction
+ */
+struct TransmissionConfig
+{
+  explicit TransmissionConfig();
+
+  std::size_t num_passthrough_bool;
+};
+
+/*! \brief Definition of mapping between interfaces and RSI communication objects
+ */
 class RsiConfig
 {
 public:
+  /*! \brief Create new config for a given hardware info
+   *
+   * \param info Hardware info to extract interfaces and mappings from
+   */
   RsiConfig(const hardware_interface::HardwareInfo& info);
 
+  /*! \brief Access ros2_control interface definition
+   *
+   * \returns Interfaces used for this RSI session
+   */
   const InterfaceConfig& interfaceConfig() const;
+
+  /*! \brief RSI transmission config for signal reception
+   *
+   * \returns RSI signal reception transmission config
+   */
+  const TransmissionConfig& receiveTransmissionConfig() const;
 
 private:
   void verifyComponent(const hardware_interface::ComponentInfo& component,
@@ -76,6 +101,8 @@ private:
                        const std::vector<std::string>& expected_command_interfaces) const;
 
   InterfaceConfig m_interface_config;
+
+  TransmissionConfig m_receive_config;
 };
 
 } // namespace kuka_rsi_driver

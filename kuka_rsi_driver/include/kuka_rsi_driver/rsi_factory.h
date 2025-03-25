@@ -36,6 +36,7 @@
 #define KUKA_RSI_DRIVER_RSI_FACTORY_H_INCLUDED
 
 #include "rsi.h"
+#include "rsi_config.h"
 
 #include <memory>
 #include <vector>
@@ -46,6 +47,7 @@ class RsiFactory
 {
 public:
   explicit RsiFactory(std::size_t cyclic_buf_size = 1024);
+  explicit RsiFactory(const RsiConfig& config, std::size_t cyclic_buf_size = 1024);
 
   RsiCommand createCommand() const;
   std::shared_ptr<RsiCommand> createCyclicCommand();
