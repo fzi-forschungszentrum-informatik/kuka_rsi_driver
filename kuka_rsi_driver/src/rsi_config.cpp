@@ -46,7 +46,17 @@ TransmissionConfig::TransmissionConfig()
 }
 
 RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info)
+  : m_sentype{"KukaRsiDriver"}
+  , m_listen_address{requiredHardwareParam(info, "listen_address")}
+  , m_listen_port{
+      static_cast<unsigned short>(std::stoi(requiredHardwareParam(info, "listen_port")))}
 {
+  if (const auto sentype_it = info.hardware_parameters.find("sentype");
+      sentype_it != info.hardware_parameters.end())
+  {
+    m_sentype = sentype_it->second;
+  }
+
   for (std::size_t i = 0; i < info.joints.size(); ++i)
   {
     const auto& joint = info.joints[i];
@@ -108,6 +118,21 @@ RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info)
   }
 }
 
+const std::string& RsiConfig::sentype() const
+{
+  return m_sentype;
+}
+
+const std::string& RsiConfig::listenAddress() const
+{
+  return m_listen_address;
+}
+
+unsigned short RsiConfig::listenPort() const
+{
+  return m_listen_port;
+}
+
 const InterfaceConfig& RsiConfig::interfaceConfig() const
 {
   return m_interface_config;
@@ -116,6 +141,19 @@ const InterfaceConfig& RsiConfig::interfaceConfig() const
 const TransmissionConfig& RsiConfig::receiveTransmissionConfig() const
 {
   return m_receive_config;
+}
+
+std::string RsiConfig::requiredHardwareParam(const hardware_interface::HardwareInfo& info,
+                                             const std::string& name) const
+{
+  if (const auto it = info.hardware_parameters.find(name); it != info.hardware_parameters.end())
+  {
+    return it->second;
+  }
+  else
+  {
+    throw std::runtime_error{fmt::format("Missing required hardware parameter {}", name)};
+  }
 }
 
 void RsiConfig::parsePassthrough(const hardware_interface::ComponentInfo& component)

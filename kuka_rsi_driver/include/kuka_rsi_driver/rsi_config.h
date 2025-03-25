@@ -96,6 +96,18 @@ public:
    */
   RsiConfig(const hardware_interface::HardwareInfo& info);
 
+  /*! \brief SENTYPE specified in RSI messages
+   */
+  const std::string& sentype() const;
+
+  /*! \brief Address to listen to for RSI messages
+   */
+  const std::string& listenAddress() const;
+
+  /*! \brief Port to listen to for RSI messages
+   */
+  unsigned short listenPort() const;
+
   /*! \brief Access ros2_control interface definition
    *
    * \returns Interfaces used for this RSI session
@@ -109,12 +121,19 @@ public:
   const TransmissionConfig& receiveTransmissionConfig() const;
 
 private:
+  std::string requiredHardwareParam(const hardware_interface::HardwareInfo& info,
+                                    const std::string& name) const;
+
   void parsePassthrough(const hardware_interface::ComponentInfo& component);
 
   void verifyComponent(const hardware_interface::ComponentInfo& component,
                        const std::string& component_function,
                        const std::vector<std::string>& expected_state_interfaces,
                        const std::vector<std::string>& expected_command_interfaces) const;
+
+  std::string m_sentype;
+  std::string m_listen_address;
+  unsigned short m_listen_port;
 
   InterfaceConfig m_interface_config;
 

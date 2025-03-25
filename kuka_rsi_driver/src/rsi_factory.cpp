@@ -89,7 +89,6 @@ std::shared_ptr<RsiState> RsiFactory::createCyclicState()
 
   if (state.use_count() != 1)
   {
-    std::cerr << m_state_i << " - " << state.use_count() << std::endl;
     throw std::runtime_error{"Cyclic states exhausted"};
   }
 

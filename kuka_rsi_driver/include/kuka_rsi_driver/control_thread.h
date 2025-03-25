@@ -55,9 +55,6 @@ class ControlThread
 {
 public:
   ControlThread(const RsiConfig& config,
-                const std::string& sentype,
-                const std::string& listen_address,
-                unsigned short listen_port,
                 ControlBuffer* control_buf,
                 RsiFactory* rsi_factory,
                 rclcpp::Logger log);

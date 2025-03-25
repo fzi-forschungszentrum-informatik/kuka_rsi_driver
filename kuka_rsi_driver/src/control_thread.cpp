@@ -42,23 +42,23 @@
 namespace kuka_rsi_driver {
 
 ControlThread::ControlThread(const RsiConfig& config,
-                             const std::string& sentype,
-                             const std::string& listen_address,
-                             unsigned short listen_port,
                              ControlBuffer* control_buf,
                              RsiFactory* rsi_factory,
                              rclcpp::Logger log)
   : m_log{std::move(log)}
-  , m_udp_server{listen_address, listen_port, std::chrono::milliseconds{1}}
+  , m_udp_server{config.listenAddress(), config.listenPort(), std::chrono::milliseconds{1}}
   , m_rsi_parser{config.receiveTransmissionConfig(), rsi_factory, m_log}
-  , m_rsi_writer{sentype, m_log}
+  , m_rsi_writer{config.sentype(), m_log}
   , m_control_buf{control_buf}
   , m_initial_cmd{rsi_factory->createCommand()}
   , m_rsi_cmd{rsi_factory->createCommand()}
 {
   m_write_buf.resize(1024);
 
-  RCLCPP_INFO(m_log, "Created UDP server listening on %s:%hu", listen_address.c_str(), listen_port);
+  RCLCPP_INFO(m_log,
+              "Created UDP server listening on %s:%hu",
+              config.listenAddress().c_str(),
+              config.listenPort());
 }
 
 ControlThread::~ControlThread()

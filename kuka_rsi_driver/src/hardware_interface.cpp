@@ -59,29 +59,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
     m_rsi_factory.emplace(*m_rsi_config);
     m_control_buf.emplace(*m_rsi_factory);
 
-    const auto listen_address = info_.hardware_parameters["listen_address"];
-    const auto listen_port    = info_.hardware_parameters["listen_port"];
-
-    if (listen_address.empty() || listen_port.empty())
-    {
-      throw std::runtime_error{"Hardware interface requires parameters listen_address and "
-                               "listen_port for RSI communication"};
-    }
-
-    std::string sentype   = "KukaRsiDriver";
-    const auto sentype_it = info_.hardware_parameters.find("sentype");
-    if (sentype_it != info_.hardware_parameters.end())
-    {
-      sentype = sentype_it->second;
-    }
-
-    m_control_thread.emplace(*m_rsi_config,
-                             sentype,
-                             listen_address,
-                             std::stoi(listen_port),
-                             &(*m_control_buf),
-                             &(*m_rsi_factory),
-                             get_logger());
+    m_control_thread.emplace(*m_rsi_config, &(*m_control_buf), &(*m_rsi_factory), get_logger());
   }
   catch (std::exception& ex)
   {
