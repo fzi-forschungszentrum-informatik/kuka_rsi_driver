@@ -33,8 +33,6 @@
  */
 #include "kuka_rsi_driver/rsi_factory.h"
 
-#include <iostream>
-
 namespace kuka_rsi_driver {
 
 RsiFactory::RsiFactory(std::size_t cyclic_buf_size)

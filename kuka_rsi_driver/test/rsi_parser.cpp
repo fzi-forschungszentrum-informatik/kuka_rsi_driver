@@ -150,7 +150,7 @@ TEST(RsiParser, ParseTestXml)
   const auto log = rclcpp::get_logger("rsi_parser");
 
   RsiFactory rsi_factory;
-  RsiParser rsi_parser{log, &rsi_factory};
+  RsiParser rsi_parser{TransmissionConfig{}, &rsi_factory, log};
 
   const auto buf = rsi_parser.buffer();
   ASSERT_GE(buf.size(), test_xml.size());

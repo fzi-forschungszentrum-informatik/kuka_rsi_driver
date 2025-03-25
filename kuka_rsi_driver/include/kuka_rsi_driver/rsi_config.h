@@ -62,11 +62,25 @@ struct InterfaceConfig
   std::string speed_scaling_state_interface;
 };
 
+struct RsiIndex
+{
+  std::string name;
+  std::size_t index;
+};
+
+struct RsiTag
+{
+  std::string name;
+  std::vector<RsiIndex> indices;
+};
+
 /*! \brief Definition of signals in one communication direction
  */
 struct TransmissionConfig
 {
   explicit TransmissionConfig();
+
+  std::vector<RsiTag> tags;
 
   std::size_t num_passthrough_bool;
 };
@@ -95,6 +109,8 @@ public:
   const TransmissionConfig& receiveTransmissionConfig() const;
 
 private:
+  void parsePassthrough(const hardware_interface::ComponentInfo& component);
+
   void verifyComponent(const hardware_interface::ComponentInfo& component,
                        const std::string& component_function,
                        const std::vector<std::string>& expected_state_interfaces,

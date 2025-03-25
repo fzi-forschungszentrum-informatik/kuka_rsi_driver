@@ -88,10 +88,10 @@ RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info)
     [&](const auto& interface) { return info.sensors[0].name + '/' + interface.name; });
 
   // Verify gpios
-  if (info.gpios.size() != 2)
+  if (info.gpios.size() < 2)
   {
     throw std::runtime_error{
-      fmt::format("Expected 2 gpio elements, but found %zu", info.gpios.size())};
+      fmt::format("Expected at least 2 gpio elements, but found %zu", info.gpios.size())};
   }
 
   verifyComponent(info.gpios[0], "robot state", {"program_state"}, {});
@@ -101,6 +101,11 @@ RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info)
   verifyComponent(info.gpios[1], "speed scaling", {"speed_scaling_factor"}, {});
   m_interface_config.speed_scaling_state_interface =
     info.gpios[1].name + "/" + info.gpios[1].state_interfaces[0].name;
+
+  for (std::size_t i = 2; i < info.gpios.size(); ++i)
+  {
+    parsePassthrough(info.gpios[i]);
+  }
 }
 
 const InterfaceConfig& RsiConfig::interfaceConfig() const
@@ -111,6 +116,36 @@ const InterfaceConfig& RsiConfig::interfaceConfig() const
 const TransmissionConfig& RsiConfig::receiveTransmissionConfig() const
 {
   return m_receive_config;
+}
+
+void RsiConfig::parsePassthrough(const hardware_interface::ComponentInfo& component)
+{
+  if (!component.command_interfaces.empty())
+  {
+    throw std::runtime_error{"Command interface passthrough not yet implemented"};
+  }
+
+  std::string tag_name = component.name;
+  if (const auto rsi_name_it = component.parameters.find("rsi_name");
+      rsi_name_it != component.parameters.end())
+  {
+    tag_name = rsi_name_it->second;
+  }
+
+  RsiTag tag{tag_name, {}};
+  for (const auto& state_interface : component.state_interfaces)
+  {
+    std::string attribute_name = state_interface.name;
+    if (const auto rsi_name_it = state_interface.parameters.find("rsi_name");
+        rsi_name_it != state_interface.parameters.end())
+    {
+      attribute_name = rsi_name_it->second;
+    }
+
+    tag.indices.push_back(RsiIndex{attribute_name, m_receive_config.num_passthrough_bool++});
+  }
+
+  m_receive_config.tags.push_back(tag);
 }
 
 void RsiConfig::verifyComponent(const hardware_interface::ComponentInfo& component,

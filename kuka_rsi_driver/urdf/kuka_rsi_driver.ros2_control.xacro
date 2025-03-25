@@ -80,6 +80,18 @@
         </state_interface>
       </gpio>
 
+      <gpio name="qcs">
+        <param name="rsi_name">QCS</param>
+
+        <state_interface name="sensor_unlocked">
+          <param name="rsi_name">Sensor_Unlocked</param>
+        </state_interface>
+
+        <state_interface name="sensor_locked">
+          <param name="rsi_name">Sensor_Locked</param>
+        </state_interface>
+      </gpio>
+
     </ros2_control>
   </xacro:macro>
 

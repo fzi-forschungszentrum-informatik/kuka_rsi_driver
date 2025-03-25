@@ -56,7 +56,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
   {
     m_rsi_config.emplace(info_);
 
-    m_rsi_factory.emplace();
+    m_rsi_factory.emplace(*m_rsi_config);
     m_control_buf.emplace(*m_rsi_factory);
 
     const auto listen_address = info_.hardware_parameters["listen_address"];
@@ -75,7 +75,8 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
       sentype = sentype_it->second;
     }
 
-    m_control_thread.emplace(sentype,
+    m_control_thread.emplace(*m_rsi_config,
+                             sentype,
                              listen_address,
                              std::stoi(listen_port),
                              &(*m_control_buf),

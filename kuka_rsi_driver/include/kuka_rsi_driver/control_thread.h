@@ -36,6 +36,7 @@
 #define KUKA_RSI_DRIVER_CONTROL_THREAD_H_INCLUDED
 
 #include "rsi.h"
+#include "rsi_config.h"
 #include "rsi_factory.h"
 #include "rsi_parser.h"
 #include "rsi_writer.h"
@@ -53,7 +54,8 @@ class ControlBuffer;
 class ControlThread
 {
 public:
-  ControlThread(const std::string& sentype,
+  ControlThread(const RsiConfig& config,
+                const std::string& sentype,
                 const std::string& listen_address,
                 unsigned short listen_port,
                 ControlBuffer* control_buf,
