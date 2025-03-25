@@ -37,6 +37,7 @@
 
 #include <array>
 #include <hardware_interface/hardware_info.hpp>
+#include <rclcpp/logger.hpp>
 #include <string>
 #include <vector>
 
@@ -93,8 +94,9 @@ public:
   /*! \brief Create new config for a given hardware info
    *
    * \param info Hardware info to extract interfaces and mappings from
+   * \param log Logger to use
    */
-  RsiConfig(const hardware_interface::HardwareInfo& info);
+  RsiConfig(const hardware_interface::HardwareInfo& info, rclcpp::Logger log);
 
   /*! \brief SENTYPE specified in RSI messages
    */
@@ -130,6 +132,8 @@ private:
                        const std::string& component_function,
                        const std::vector<std::string>& expected_state_interfaces,
                        const std::vector<std::string>& expected_command_interfaces) const;
+
+  rclcpp::Logger m_log;
 
   std::string m_sentype;
   std::string m_listen_address;

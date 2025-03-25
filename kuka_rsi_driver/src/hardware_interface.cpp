@@ -54,7 +54,7 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
 
   try
   {
-    m_rsi_config.emplace(info_);
+    m_rsi_config.emplace(info_, get_logger());
 
     m_rsi_factory.emplace(*m_rsi_config);
     m_control_buf.emplace(*m_rsi_factory);

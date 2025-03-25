@@ -37,6 +37,7 @@
 #include <array>
 #include <fmt/format.h>
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
+#include <rclcpp/logging.hpp>
 
 namespace kuka_rsi_driver {
 
@@ -45,8 +46,9 @@ TransmissionConfig::TransmissionConfig()
 {
 }
 
-RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info)
-  : m_sentype{"KukaRsiDriver"}
+RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info, rclcpp::Logger log)
+  : m_log{std::move(log)}
+  , m_sentype{"KukaRsiDriver"}
   , m_listen_address{requiredHardwareParam(info, "listen_address")}
   , m_listen_port{
       static_cast<unsigned short>(std::stoi(requiredHardwareParam(info, "listen_port")))}
@@ -163,12 +165,19 @@ void RsiConfig::parsePassthrough(const hardware_interface::ComponentInfo& compon
     throw std::runtime_error{"Command interface passthrough not yet implemented"};
   }
 
+  if (component.state_interfaces.empty())
+  {
+    return;
+  }
+
   std::string tag_name = component.name;
   if (const auto rsi_name_it = component.parameters.find("rsi_name");
       rsi_name_it != component.parameters.end())
   {
     tag_name = rsi_name_it->second;
   }
+
+  RCLCPP_INFO(m_log, "Passthrough for component %s:", component.name.c_str());
 
   RsiTag tag{tag_name, {}};
   for (const auto& state_interface : component.state_interfaces)
@@ -180,7 +189,10 @@ void RsiConfig::parsePassthrough(const hardware_interface::ComponentInfo& compon
       attribute_name = rsi_name_it->second;
     }
 
-    tag.indices.push_back(RsiIndex{attribute_name, m_receive_config.num_passthrough_bool++});
+    const auto state_index = m_receive_config.num_passthrough_bool++;
+
+    RCLCPP_INFO(m_log, "  %s.%s => S[%zu]", tag_name.c_str(), attribute_name.c_str(), state_index);
+    tag.indices.push_back(RsiIndex{attribute_name, state_index});
   }
 
   m_receive_config.tags.push_back(tag);
