@@ -70,6 +70,11 @@ RsiFactory::RsiFactory(std::shared_ptr<RsiConfig> config, std::size_t cyclic_buf
 
 RsiCommand RsiFactory::createCommand() const
 {
+  if (!m_rsi_config)
+  {
+    return RsiCommand{0, 0};
+  }
+
   return RsiCommand{m_rsi_config->sendTransmissionConfig().num_passthrough_bool,
                     m_rsi_config->sendTransmissionConfig().num_passthrough_double};
 }
