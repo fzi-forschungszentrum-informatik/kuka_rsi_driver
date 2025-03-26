@@ -38,8 +38,9 @@
 #include <array>
 #include <hardware_interface/hardware_info.hpp>
 #include <rclcpp/logger.hpp>
+#include <span>
 #include <string>
-#include <vector>
+#include <utility>
 
 namespace kuka_rsi_driver {
 
@@ -148,6 +149,10 @@ private:
                                     const std::string& name) const;
 
   void parsePassthrough(const hardware_interface::ComponentInfo& component);
+  std::pair<std::vector<InterfaceIndex>, RsiTag>
+  parseInterfaces(std::span<const hardware_interface::InterfaceInfo> interfaces,
+                  const hardware_interface::ComponentInfo& component,
+                  TransmissionConfig& transmission_config) const;
 
   void verifyComponent(const hardware_interface::ComponentInfo& component,
                        const std::string& component_function,

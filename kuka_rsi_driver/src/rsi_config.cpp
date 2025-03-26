@@ -78,10 +78,10 @@ RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info, rclcpp::Logge
   }
 
   // Verify sensors
-  if (info.sensors.size() != 1)
+  if (info.sensors.size() < 1)
   {
     throw std::runtime_error{
-      fmt::format("Expected 1 sensor element, but found %zu", info.sensors.size())};
+      fmt::format("Expected at least 1 sensor element, but found %zu", info.sensors.size())};
   }
   verifyComponent(info.sensors[0],
                   "tcp",
@@ -98,6 +98,11 @@ RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info, rclcpp::Logge
     info.sensors[0].state_interfaces.cend(),
     m_interface_config.tcp_state_interfaces.begin(),
     [&](const auto& interface) { return info.sensors[0].name + '/' + interface.name; });
+
+  for (std::size_t i = 1; i < info.sensors.size(); ++i)
+  {
+    parsePassthrough(info.sensors[i]);
+  }
 
   // Verify gpios
   if (info.gpios.size() < 2)
@@ -170,72 +175,76 @@ void RsiConfig::parsePassthrough(const hardware_interface::ComponentInfo& compon
     return;
   }
 
-  std::string tag_name = component.name;
-  if (const auto rsi_name_it = component.parameters.find("rsi_name");
-      rsi_name_it != component.parameters.end())
-  {
-    tag_name = rsi_name_it->second;
-  }
-
-  RCLCPP_INFO(m_log, "Passthrough for component %s:", component.name.c_str());
+  RCLCPP_INFO(
+    m_log, "Passthrough for %s component %s:", component.type.c_str(), component.name.c_str());
 
   if (!component.state_interfaces.empty())
   {
-    RsiTag tag{tag_name, {}};
-    for (const auto& state_interface : component.state_interfaces)
-    {
-      std::string attribute_name = state_interface.name;
-      if (const auto rsi_name_it = state_interface.parameters.find("rsi_name");
-          rsi_name_it != state_interface.parameters.end())
-      {
-        attribute_name = rsi_name_it->second;
-      }
+    RCLCPP_INFO(m_log, "  State interfaces:");
+    const auto [interfaces, tag] =
+      parseInterfaces(component.state_interfaces, component, m_receive_config);
 
-      const auto state_index = m_receive_config.num_passthrough_bool++;
-
-      RCLCPP_INFO(m_log,
-                  "  %s.%s => S[%zu] => %s/%s",
-                  tag_name.c_str(),
-                  attribute_name.c_str(),
-                  state_index,
-                  component.name.c_str(),
-                  state_interface.name.c_str());
-      tag.indices.push_back(RsiIndex{attribute_name, state_index});
-      m_interface_config.passthrough_state_interfaces.emplace_back(
-        state_index, component.name + "/" + state_interface.name);
-    }
-
+    m_interface_config.passthrough_state_interfaces.insert(
+      m_interface_config.passthrough_state_interfaces.end(), interfaces.begin(), interfaces.end());
     m_receive_config.tags.push_back(tag);
   }
 
   if (!component.command_interfaces.empty())
   {
-    RsiTag tag{tag_name, {}};
-    for (const auto& command_interface : component.command_interfaces)
-    {
-      std::string attribute_name = command_interface.name;
-      if (const auto rsi_name_it = command_interface.parameters.find("rsi_name");
-          rsi_name_it != command_interface.parameters.end())
-      {
-        attribute_name = rsi_name_it->second;
-      }
+    RCLCPP_INFO(m_log, "  Command interfaces:");
+    const auto [interfaces, tag] =
+      parseInterfaces(component.command_interfaces, component, m_send_config);
 
-      const auto state_index = m_send_config.num_passthrough_bool++;
-
-      RCLCPP_INFO(m_log,
-                  "  %s/%s => C[%zu] => %s.%s",
-                  component.name.c_str(),
-                  command_interface.name.c_str(),
-                  state_index,
-                  tag_name.c_str(),
-                  attribute_name.c_str());
-      tag.indices.push_back(RsiIndex{attribute_name, state_index});
-      m_interface_config.passthrough_command_interfaces.emplace_back(
-        state_index, component.name + "/" + command_interface.name);
-    }
-
+    m_interface_config.passthrough_command_interfaces.insert(
+      m_interface_config.passthrough_command_interfaces.end(),
+      interfaces.begin(),
+      interfaces.end());
     m_send_config.tags.push_back(tag);
   }
+}
+
+std::pair<std::vector<InterfaceIndex>, RsiTag>
+RsiConfig::parseInterfaces(std::span<const hardware_interface::InterfaceInfo> interfaces,
+                           const hardware_interface::ComponentInfo& component,
+                           TransmissionConfig& transmission_config) const
+{
+  // Create RSI tag name based on component
+  std::string tag_name = component.name;
+  if (const auto tag_name_it = component.parameters.find("rsi_name");
+      tag_name_it != component.parameters.end())
+  {
+    tag_name = tag_name_it->second;
+  }
+
+  RsiTag tag{tag_name, {}};
+  std::vector<InterfaceIndex> interface_indices;
+
+  for (const auto& interface : interfaces)
+  {
+    // Get RSI attribute name based on interface
+    std::string attribute_name = interface.name;
+    if (const auto attribute_name_it = interface.parameters.find("rsi_name");
+        attribute_name_it != interface.parameters.end())
+    {
+      attribute_name = attribute_name_it->second;
+    }
+
+    // Create new index
+    const auto state_index = transmission_config.num_passthrough_bool++;
+
+    RCLCPP_INFO(m_log,
+                "    %s/%s - %zu - %s.%s",
+                component.name.c_str(),
+                interface.name.c_str(),
+                state_index,
+                tag_name.c_str(),
+                attribute_name.c_str());
+
+    tag.indices.emplace_back(attribute_name, state_index);
+    interface_indices.emplace_back(state_index, component.name + '/' + interface.name);
+  }
+
+  return std::make_pair(interface_indices, tag);
 }
 
 void RsiConfig::verifyComponent(const hardware_interface::ComponentInfo& component,
