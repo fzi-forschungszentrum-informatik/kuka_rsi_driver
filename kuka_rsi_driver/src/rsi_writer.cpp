@@ -128,7 +128,21 @@ std::size_t RsiWriter::writeCommand(const RsiCommand& cmd, std::size_t ipoc, std
     {
       m_writer.writeText(index.name);
       m_writer.writeText("=\"");
-      m_writer.writeText(cmd.passthrough.values_bool[index.index] ? "1" : "0");
+
+      switch (index.type)
+      {
+        case DataType::BOOL:
+          m_writer.writeText(cmd.passthrough.values_bool[index.index] ? "1" : "0");
+          break;
+
+        case DataType::DOUBLE:
+          m_writer.writeNumber(cmd.passthrough.values_double[index.index]);
+          break;
+
+        default:
+          throw std::runtime_error{"Invalid data type"};
+      }
+
       m_writer.writeText("\" ");
     }
   }

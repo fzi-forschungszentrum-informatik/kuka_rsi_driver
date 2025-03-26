@@ -166,8 +166,21 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
     const auto& interface_config = m_rsi_config->interfaceConfig();
     for (const auto& passthrough_index : interface_config.passthrough_command_interfaces)
     {
-      cmd->passthrough.values_bool[passthrough_index.index] =
-        get_command(passthrough_index.name) == 1.0 ? true : false;
+      switch (passthrough_index.type)
+      {
+        case DataType::BOOL:
+          cmd->passthrough.values_bool[passthrough_index.index] =
+            get_command(passthrough_index.name) == 1.0 ? true : false;
+          break;
+
+        case DataType::DOUBLE:
+          cmd->passthrough.values_double[passthrough_index.index] =
+            get_command(passthrough_index.name);
+          break;
+
+        default:
+          throw std::runtime_error{"Invalid data type"};
+      }
     }
   }
 
@@ -224,8 +237,20 @@ void KukaRsiHardwareInterface::setState(const RsiState& state)
   // Passthrough interfaces
   for (const auto& passthrough_index : interface_config.passthrough_state_interfaces)
   {
-    set_state(passthrough_index.name,
-              state.passthrough.values_bool[passthrough_index.index] ? 1.0 : 0.0);
+    switch (passthrough_index.type)
+    {
+      case DataType::BOOL:
+        set_state(passthrough_index.name,
+                  state.passthrough.values_bool[passthrough_index.index] ? 1.0 : 0.0);
+        break;
+
+      case DataType::DOUBLE:
+        set_state(passthrough_index.name, state.passthrough.values_double[passthrough_index.index]);
+        break;
+
+      default:
+        throw std::runtime_error{"Invalid data type"};
+    }
   }
 }
 

@@ -44,6 +44,14 @@
 
 namespace kuka_rsi_driver {
 
+/*! \brief Available data types that can be passed through transparently between RSI and interfaces
+ */
+enum class DataType
+{
+  BOOL,
+  DOUBLE
+};
+
 /*! \brief Mapping between internal structure and interface
  */
 struct InterfaceIndex
@@ -52,6 +60,8 @@ struct InterfaceIndex
   std::size_t index;
   //! Fully qualified interface name
   std::string name;
+  //! Data type
+  DataType type;
 };
 
 /*! \brief Definition of all state and command interfaces
@@ -83,6 +93,7 @@ struct RsiIndex
 {
   std::string name;
   std::size_t index;
+  DataType type;
 };
 
 struct RsiTag
@@ -100,6 +111,7 @@ struct TransmissionConfig
   std::vector<RsiTag> tags;
 
   std::size_t num_passthrough_bool;
+  std::size_t num_passthrough_double;
 };
 
 /*! \brief Definition of mapping between interfaces and RSI communication objects

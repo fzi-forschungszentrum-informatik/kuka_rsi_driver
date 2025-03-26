@@ -121,11 +121,14 @@ struct RsiPassthrough
   /*! \brief Pre-Allocate passthrough storage of given size
    *
    * \param num_bool Number of boolean values to pre-allocate
+   * \param num_double Number of double values to pre-allocate
    */
-  explicit RsiPassthrough(std::size_t num_bool);
+  explicit RsiPassthrough(std::size_t num_bool, std::size_t num_double);
 
   //! Passed-through boolean values
   std::vector<bool> values_bool;
+  //! Passed-through double values
+  std::vector<double> values_double;
 };
 
 class RsiState
@@ -134,8 +137,9 @@ public:
   /*! \brief Pre-Allocate a new state object
    *
    * \param num_passthrough_bool Number of boolean passthrough values to pre-allocate
+   * \param num_passthrough_double Number of double passthrough values to pre-allocate
    */
-  explicit RsiState(std::size_t num_passthrough_bool);
+  explicit RsiState(std::size_t num_passthrough_bool, std::size_t num_passthrough_double);
 
   JointArray axis_actual_pos;
   JointArray axis_setpoint_pos;
@@ -159,7 +163,12 @@ public:
 class RsiCommand
 {
 public:
-  explicit RsiCommand(std::size_t num_passthrough_bool);
+  /*! \brief Pre-Allocate a new command object
+   *
+   * \param num_passthrough_bool Number of boolean passthrough values to pre-allocate
+   * \param num_passthrough_double Number of double passthrough values to pre-allocate
+   */
+  explicit RsiCommand(std::size_t num_passthrough_bool, std::size_t num_passthrough_double);
 
   std::chrono::steady_clock::time_point write_time;
 

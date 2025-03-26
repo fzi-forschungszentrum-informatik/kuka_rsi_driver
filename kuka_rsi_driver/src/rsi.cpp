@@ -193,20 +193,21 @@ void CartesianPose::getQuaternion(double& x, double& y, double& z, double& w) co
   w = ca * cb * cc + sa * sb * sc;
 }
 
-RsiPassthrough::RsiPassthrough(std::size_t num_bool)
+RsiPassthrough::RsiPassthrough(std::size_t num_bool, std::size_t num_double)
 {
   values_bool.resize(num_bool);
+  values_double.resize(num_double);
 }
 
-RsiState::RsiState(std::size_t num_passthrough_bool)
+RsiState::RsiState(std::size_t num_passthrough_bool, std::size_t num_passthrough_double)
   : delay{0}
   , ipoc{0}
-  , passthrough{num_passthrough_bool}
+  , passthrough{num_passthrough_bool, num_passthrough_double}
 {
 }
 
-RsiCommand::RsiCommand(std::size_t num_passthrough_bool)
-  : passthrough{num_passthrough_bool}
+RsiCommand::RsiCommand(std::size_t num_passthrough_bool, std::size_t num_passthrough_double)
+  : passthrough{num_passthrough_bool, num_passthrough_double}
 {
   axis_command_pos.fill(0.0);
 }
@@ -217,6 +218,11 @@ void interpolate(const RsiCommand& c1, const RsiCommand& c2, double alpha, RsiCo
   {
     dest.axis_command_pos[i] =
       (1 - alpha) * c1.axis_command_pos[i] + alpha * c2.axis_command_pos[i];
+  }
+  for (std::size_t i = 0; i < c1.passthrough.values_double.size(); ++i)
+  {
+    dest.passthrough.values_double[i] =
+      (1 - alpha) * c1.passthrough.values_double[i] + alpha * c2.passthrough.values_double[i];
   }
 
   for (std::size_t i = 0; i < c1.passthrough.values_bool.size(); ++i)

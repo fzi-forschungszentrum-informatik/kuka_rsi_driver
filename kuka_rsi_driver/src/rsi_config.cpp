@@ -43,6 +43,7 @@ namespace kuka_rsi_driver {
 
 TransmissionConfig::TransmissionConfig()
   : num_passthrough_bool{0}
+  , num_passthrough_double{0}
 {
 }
 
@@ -229,19 +230,56 @@ RsiConfig::parseInterfaces(std::span<const hardware_interface::InterfaceInfo> in
       attribute_name = attribute_name_it->second;
     }
 
+    // Get RSI data type from interface
+    DataType type = DataType::DOUBLE;
+    char type_c   = 'd';
+    if (const auto rsi_type_it = interface.parameters.find("rsi_type");
+        rsi_type_it != interface.parameters.end())
+    {
+      if (rsi_type_it->second == "bool")
+      {
+        type   = DataType::BOOL;
+        type_c = 'b';
+      }
+      else if (rsi_type_it->second == "double")
+      {
+        type   = DataType::DOUBLE;
+        type_c = 'd';
+      }
+      else
+      {
+        throw std::runtime_error{
+          fmt::format("Invalid rsi_type specification '{}' for interface {}/{}",
+                      rsi_type_it->second,
+                      component.name,
+                      interface.name)};
+      }
+    }
+
     // Create new index
-    const auto state_index = transmission_config.num_passthrough_bool++;
+    const auto state_index = [&]() {
+      switch (type)
+      {
+        case DataType::BOOL:
+          return transmission_config.num_passthrough_bool++;
+        case DataType::DOUBLE:
+          return transmission_config.num_passthrough_double++;
+        default:
+          throw std::runtime_error{"Invalid data type"};
+      }
+    }();
 
     RCLCPP_INFO(m_log,
-                "    %s/%s - %zu - %s.%s",
+                "    %s/%s - %c[%zu] - %s.%s",
                 component.name.c_str(),
                 interface.name.c_str(),
+                type_c,
                 state_index,
                 tag_name.c_str(),
                 attribute_name.c_str());
 
-    tag.indices.emplace_back(attribute_name, state_index);
-    interface_indices.emplace_back(state_index, component.name + '/' + interface.name);
+    tag.indices.emplace_back(attribute_name, state_index, type);
+    interface_indices.emplace_back(state_index, component.name + '/' + interface.name, type);
   }
 
   return std::make_pair(interface_indices, tag);

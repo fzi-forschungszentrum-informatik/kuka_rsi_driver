@@ -380,6 +380,7 @@ RsiParser::RsiParser(const TransmissionConfig& config,
                               setTextValue<std::size_t>(m_rsi_state->ipoc, text, attributes);
                             });
 
+  // Add callbacks for all passthrough entries
   for (const auto& tag : config.tags)
   {
     std::vector<std::string> attribute_names;
@@ -393,8 +394,23 @@ RsiParser::RsiParser(const TransmissionConfig& config,
       [this, tag](std::string_view text, std::span<std::string_view> attributes) {
         for (std::size_t i = 0; i < tag.indices.size(); ++i)
         {
-          const auto v = attributes[i] == "1" ? true : false;
-          m_rsi_state->passthrough.values_bool[tag.indices[i].index] = v;
+          switch (tag.indices[i].type)
+          {
+            case DataType::BOOL: {
+              const auto v = attributes[i] == "1" ? true : false;
+              m_rsi_state->passthrough.values_bool[tag.indices[i].index] = v;
+              break;
+            }
+
+            case DataType::DOUBLE: {
+              const auto v = parseNumber<double>(attributes[i]);
+              m_rsi_state->passthrough.values_double[tag.indices[i].index] = v;
+              break;
+            }
+
+            default:
+              throw std::runtime_error{"Invalid data type"};
+          }
         }
       },
       attribute_names);
