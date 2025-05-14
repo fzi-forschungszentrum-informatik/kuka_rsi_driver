@@ -139,6 +139,10 @@ std::size_t RsiWriter::writeCommand(const RsiCommand& cmd, std::size_t ipoc, std
           m_writer.writeNumber(cmd.passthrough.values_double[index.index]);
           break;
 
+        case DataType::LONG:
+          m_writer.writeNumber(cmd.passthrough.values_long[index.index]);
+          break;
+
         default:
           throw std::runtime_error{"Invalid data type"};
       }

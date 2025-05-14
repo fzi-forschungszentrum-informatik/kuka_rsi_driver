@@ -408,6 +408,12 @@ RsiParser::RsiParser(const TransmissionConfig& config,
               break;
             }
 
+            case DataType::LONG: {
+              const auto v = parseNumber<std::uint64_t>(attributes[i]);
+              m_rsi_state->passthrough.values_long[tag.indices[i].index] = v;
+              break;
+            }
+
             default:
               throw std::runtime_error{"Invalid data type"};
           }

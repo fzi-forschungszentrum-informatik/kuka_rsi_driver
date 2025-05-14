@@ -49,7 +49,8 @@ namespace kuka_rsi_driver {
 enum class DataType
 {
   BOOL,
-  DOUBLE
+  DOUBLE,
+  LONG
 };
 
 /*! \brief Mapping between internal structure and interface
@@ -112,6 +113,7 @@ struct TransmissionConfig
 
   std::size_t num_passthrough_bool;
   std::size_t num_passthrough_double;
+  std::size_t num_passthrough_long;
 };
 
 /*! \brief Definition of mapping between interfaces and RSI communication objects

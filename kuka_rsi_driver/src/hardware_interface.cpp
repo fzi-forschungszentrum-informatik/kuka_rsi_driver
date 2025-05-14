@@ -35,6 +35,7 @@
 
 #include "kuka_rsi_driver/tracing.h"
 
+#include <bit>
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <lifecycle_msgs/msg/state.hpp>
 #include <limits>
@@ -178,6 +179,11 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
             get_command(passthrough_index.name);
           break;
 
+        case DataType::LONG:
+          cmd->passthrough.values_long[passthrough_index.index] =
+            std::bit_cast<std::uint64_t>(get_command(passthrough_index.name));
+          break;
+
         default:
           throw std::runtime_error{"Invalid data type"};
       }
@@ -246,6 +252,11 @@ void KukaRsiHardwareInterface::setState(const RsiState& state)
 
       case DataType::DOUBLE:
         set_state(passthrough_index.name, state.passthrough.values_double[passthrough_index.index]);
+        break;
+
+      case DataType::LONG:
+        set_state(passthrough_index.name,
+                  std::bit_cast<double>(state.passthrough.values_long[passthrough_index.index]));
         break;
 
       default:

@@ -44,7 +44,7 @@ TEST(RsiWriter, WriteTestXml)
   RsiWriter writer{"TestSenType", TransmissionConfig{}, log};
 
   // Create test command
-  RsiCommand cmd{0, 0};
+  RsiCommand cmd{0, 0, 0};
   for (std::size_t i = 0; i < cmd.axis_command_pos.size(); ++i)
   {
     cmd.axis_command_pos[i] = i;

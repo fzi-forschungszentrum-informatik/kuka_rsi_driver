@@ -44,6 +44,7 @@ namespace kuka_rsi_driver {
 TransmissionConfig::TransmissionConfig()
   : num_passthrough_bool{0}
   , num_passthrough_double{0}
+  , num_passthrough_long{0}
 {
 }
 
@@ -246,6 +247,11 @@ RsiConfig::parseInterfaces(std::span<const hardware_interface::InterfaceInfo> in
         type   = DataType::DOUBLE;
         type_c = 'd';
       }
+      else if (rsi_type_it->second == "long")
+      {
+        type   = DataType::LONG;
+        type_c = 'l';
+      }
       else
       {
         throw std::runtime_error{
@@ -264,6 +270,8 @@ RsiConfig::parseInterfaces(std::span<const hardware_interface::InterfaceInfo> in
           return transmission_config.num_passthrough_bool++;
         case DataType::DOUBLE:
           return transmission_config.num_passthrough_double++;
+        case DataType::LONG:
+          return transmission_config.num_passthrough_long++;
         default:
           throw std::runtime_error{"Invalid data type"};
       }

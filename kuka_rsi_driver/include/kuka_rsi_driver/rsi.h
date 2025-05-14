@@ -122,13 +122,16 @@ struct RsiPassthrough
    *
    * \param num_bool Number of boolean values to pre-allocate
    * \param num_double Number of double values to pre-allocate
+   * \param num_long Number of long values to pre-allocate
    */
-  explicit RsiPassthrough(std::size_t num_bool, std::size_t num_double);
+  explicit RsiPassthrough(std::size_t num_bool, std::size_t num_double, std::size_t num_long);
 
   //! Passed-through boolean values
   std::vector<bool> values_bool;
   //! Passed-through double values
   std::vector<double> values_double;
+  //! Passed-through long values
+  std::vector<std::uint64_t> values_long;
 };
 
 class RsiState
@@ -138,8 +141,11 @@ public:
    *
    * \param num_passthrough_bool Number of boolean passthrough values to pre-allocate
    * \param num_passthrough_double Number of double passthrough values to pre-allocate
+   * \param num_passthrough_long Number of long passthrough values to pre-allocate
    */
-  explicit RsiState(std::size_t num_passthrough_bool, std::size_t num_passthrough_double);
+  explicit RsiState(std::size_t num_passthrough_bool,
+                    std::size_t num_passthrough_double,
+                    std::size_t num_passthrough_long);
 
   JointArray axis_actual_pos;
   JointArray axis_setpoint_pos;
@@ -167,8 +173,11 @@ public:
    *
    * \param num_passthrough_bool Number of boolean passthrough values to pre-allocate
    * \param num_passthrough_double Number of double passthrough values to pre-allocate
+   * \param num_passthrough_long Number of long passthrough values to pre-allocate
    */
-  explicit RsiCommand(std::size_t num_passthrough_bool, std::size_t num_passthrough_double);
+  explicit RsiCommand(std::size_t num_passthrough_bool,
+                      std::size_t num_passthrough_double,
+                      std::size_t num_passthrough_long);
 
   std::chrono::steady_clock::time_point write_time;
 
