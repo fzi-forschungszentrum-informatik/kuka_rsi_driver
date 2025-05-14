@@ -99,6 +99,13 @@ KukaRsiHardwareInterface::on_configure(const rclcpp_lifecycle::State& previous_s
         set_command(joint_position_command_interfaces[i], state->axis_actual_pos[i] * M_PI / 180.);
       }
 
+      // Passthrough interfaces
+      const auto& interface_config = m_rsi_config->interfaceConfig();
+      for (const auto& passthrough_index : interface_config.passthrough_command_interfaces)
+      {
+        set_command(passthrough_index.name, 0.0);
+      }
+
       m_control_buf->zeroOffsets();
 
       RCLCPP_INFO(get_logger(), "Initialized RSI communication");

@@ -152,6 +152,10 @@ void ControlThread::run()
       {
         m_rsi_cmd.passthrough.values_double[i] = cmd->passthrough.values_double[i];
       }
+      for (std::size_t i = 0; i < cmd->passthrough.values_long.size(); ++i)
+      {
+        m_rsi_cmd.passthrough.values_long[i] = cmd->passthrough.values_long[i];
+      }
 
       KUKA_RSI_DRIVER_TRACEPOINT(rsi_packet_sent,
                                  rsi_state->ipoc,

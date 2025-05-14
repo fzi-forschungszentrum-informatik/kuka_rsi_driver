@@ -229,10 +229,13 @@ void interpolate(const RsiCommand& c1, const RsiCommand& c2, double alpha, RsiCo
     dest.passthrough.values_double[i] =
       (1 - alpha) * c1.passthrough.values_double[i] + alpha * c2.passthrough.values_double[i];
   }
-
   for (std::size_t i = 0; i < c1.passthrough.values_bool.size(); ++i)
   {
     dest.passthrough.values_bool[i] = c1.passthrough.values_bool[i];
+  }
+  for (std::size_t i = 0; i < c1.passthrough.values_long.size(); ++i)
+  {
+    dest.passthrough.values_long[i] = c1.passthrough.values_long[i];
   }
 }
 

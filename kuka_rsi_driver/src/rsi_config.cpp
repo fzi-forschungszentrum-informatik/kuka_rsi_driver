@@ -61,7 +61,13 @@ RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info, rclcpp::Logge
     m_sentype = sentype_it->second;
   }
 
-  for (std::size_t i = 0; i < info.joints.size(); ++i)
+  // Verify joints
+  if (info.joints.size() < 6)
+  {
+    throw std::runtime_error{
+      fmt::format("Expected at least 6 joints, but found {}", info.joints.size())};
+  }
+  for (std::size_t i = 0; i < 6; ++i)
   {
     const auto& joint = info.joints[i];
 
@@ -78,12 +84,16 @@ RsiConfig::RsiConfig(const hardware_interface::HardwareInfo& info, rclcpp::Logge
     m_interface_config.joint_effort_state_interfaces.push_back(joint.name + "/" +
                                                                joint.state_interfaces[1].name);
   }
+  for (std::size_t i = 6; i < info.joints.size(); ++i)
+  {
+    parsePassthrough(info.joints[i]);
+  }
 
   // Verify sensors
   if (info.sensors.size() < 1)
   {
     throw std::runtime_error{
-      fmt::format("Expected at least 1 sensor element, but found %zu", info.sensors.size())};
+      fmt::format("Expected at least 1 sensor element, but found {}", info.sensors.size())};
   }
   verifyComponent(info.sensors[0],
                   "tcp",
