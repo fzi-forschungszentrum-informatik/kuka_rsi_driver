@@ -99,6 +99,17 @@ def generate_launch_description():
         description="Whether to use mock hardware instead of real hardware interface",
     )
     declare_robot_description_arg(
+        "mock_gpio_commands",
+        default_value="false",
+        description="If use_mock_hardware is set to true: Create additional command interfaces for faking GPIO states",
+    )
+    declare_robot_description_arg(
+        "mock_sensor_commands",
+        default_value="false",
+        description="If use_mock_hardware is set to true: Create additional command interfaces for faking sensor measurements",
+    )
+
+    declare_robot_description_arg(
         "initial_positions_file",
         default_value=PathJoinSubstitution(
             [kuka_rsi_driver, "config", "initial_positions.yaml"]
