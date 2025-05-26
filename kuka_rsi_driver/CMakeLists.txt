@@ -55,6 +55,7 @@ target_sources(kuka_rsi_driver
     src/rsi_factory.cpp
     src/rsi_parser.cpp
     src/rsi.cpp
+    src/rsi_config.cpp
     src/rsi_writer.cpp
     src/udp_server.cpp
 )

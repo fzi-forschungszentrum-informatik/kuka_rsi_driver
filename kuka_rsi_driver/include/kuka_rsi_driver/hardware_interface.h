@@ -38,10 +38,12 @@
 #include "control_buffer.h"
 #include "control_thread.h"
 #include "rsi.h"
+#include "rsi_config.h"
 #include "rsi_factory.h"
 #include "tracing.h"
 
 #include <hardware_interface/system_interface.hpp>
+#include <memory>
 #include <optional>
 #include <rclcpp_lifecycle/state.hpp>
 #include <vector>
@@ -72,13 +74,7 @@ public:
 private:
   void setState(const RsiState& state);
 
-  std::vector<std::string> m_joint_command_pos_ifaces;
-  std::vector<std::string> m_joint_state_pos_ifaces;
-  std::vector<std::string> m_joint_state_eff_ifaces;
-  std::vector<std::string> m_sensor_tcp_state_ifaces;
-  std::string m_gpio_robot_state_iface;
-  std::string m_gpio_speed_scaling_state_iface;
-
+  std::shared_ptr<RsiConfig> m_rsi_config;
   std::optional<RsiFactory> m_rsi_factory;
   std::optional<ControlBuffer> m_control_buf;
   std::optional<ControlThread> m_control_thread;

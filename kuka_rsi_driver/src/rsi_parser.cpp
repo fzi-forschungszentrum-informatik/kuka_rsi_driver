@@ -302,7 +302,10 @@ void XmlParser::setupParser()
   m_in_scope  = false;
 }
 
-RsiParser::RsiParser(rclcpp::Logger log, RsiFactory* rsi_factory, std::size_t buf_size)
+RsiParser::RsiParser(const TransmissionConfig& config,
+                     RsiFactory* rsi_factory,
+                     rclcpp::Logger log,
+                     std::size_t buf_size)
   : m_log{std::move(log)}
   , m_xml_parser{"Rob", m_log}
   , m_rsi_factory{rsi_factory}
@@ -376,6 +379,48 @@ RsiParser::RsiParser(rclcpp::Logger log, RsiFactory* rsi_factory, std::size_t bu
                             [this](std::string_view text, std::span<std::string_view> attributes) {
                               setTextValue<std::size_t>(m_rsi_state->ipoc, text, attributes);
                             });
+
+  // Add callbacks for all passthrough entries
+  for (const auto& tag : config.tags)
+  {
+    std::vector<std::string> attribute_names;
+    std::transform(tag.indices.cbegin(),
+                   tag.indices.cend(),
+                   std::back_inserter(attribute_names),
+                   [](const auto& index) { return index.name; });
+
+    m_xml_parser.addElementCb(
+      tag.name,
+      [this, tag](std::string_view text, std::span<std::string_view> attributes) {
+        for (std::size_t i = 0; i < tag.indices.size(); ++i)
+        {
+          switch (tag.indices[i].type)
+          {
+            case DataType::BOOL: {
+              const auto v = attributes[i] == "1" ? true : false;
+              m_rsi_state->passthrough.values_bool[tag.indices[i].index] = v;
+              break;
+            }
+
+            case DataType::DOUBLE: {
+              const auto v = parseNumber<double>(attributes[i]);
+              m_rsi_state->passthrough.values_double[tag.indices[i].index] = v;
+              break;
+            }
+
+            case DataType::LONG: {
+              const auto v = parseNumber<std::uint64_t>(attributes[i]);
+              m_rsi_state->passthrough.values_long[tag.indices[i].index] = v;
+              break;
+            }
+
+            default:
+              throw std::runtime_error{"Invalid data type"};
+          }
+        }
+      },
+      attribute_names);
+  }
 }
 
 std::span<char> RsiParser::buffer() const

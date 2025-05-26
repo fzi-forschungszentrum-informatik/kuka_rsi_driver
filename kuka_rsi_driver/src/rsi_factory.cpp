@@ -33,8 +33,6 @@
  */
 #include "kuka_rsi_driver/rsi_factory.h"
 
-#include <iostream>
-
 namespace kuka_rsi_driver {
 
 RsiFactory::RsiFactory(std::size_t cyclic_buf_size)
@@ -46,14 +44,42 @@ RsiFactory::RsiFactory(std::size_t cyclic_buf_size)
 
   for (std::size_t i = 0; i < cyclic_buf_size; ++i)
   {
-    m_cmd_buf.emplace_back(std::make_shared<RsiCommand>());
-    m_state_buf.emplace_back(std::make_shared<RsiState>());
+    m_cmd_buf.emplace_back(std::make_shared<RsiCommand>(0, 0, 0));
+    m_state_buf.emplace_back(std::make_shared<RsiState>(0, 0, 0));
+  }
+}
+
+RsiFactory::RsiFactory(std::shared_ptr<RsiConfig> config, std::size_t cyclic_buf_size)
+  : m_rsi_config{std::move(config)}
+  , m_cmd_i{0}
+  , m_state_i{0}
+{
+  m_cmd_buf.reserve(cyclic_buf_size);
+  m_state_buf.reserve(cyclic_buf_size);
+
+  for (std::size_t i = 0; i < cyclic_buf_size; ++i)
+  {
+    m_cmd_buf.emplace_back(
+      std::make_shared<RsiCommand>(m_rsi_config->sendTransmissionConfig().num_passthrough_bool,
+                                   m_rsi_config->sendTransmissionConfig().num_passthrough_double,
+                                   m_rsi_config->sendTransmissionConfig().num_passthrough_long));
+    m_state_buf.emplace_back(
+      std::make_shared<RsiState>(m_rsi_config->receiveTransmissionConfig().num_passthrough_bool,
+                                 m_rsi_config->receiveTransmissionConfig().num_passthrough_double,
+                                 m_rsi_config->receiveTransmissionConfig().num_passthrough_long));
   }
 }
 
 RsiCommand RsiFactory::createCommand() const
 {
-  return RsiCommand{};
+  if (!m_rsi_config)
+  {
+    return RsiCommand{0, 0, 0};
+  }
+
+  return RsiCommand{m_rsi_config->sendTransmissionConfig().num_passthrough_bool,
+                    m_rsi_config->sendTransmissionConfig().num_passthrough_double,
+                    m_rsi_config->sendTransmissionConfig().num_passthrough_long};
 }
 
 std::shared_ptr<RsiCommand> RsiFactory::createCyclicCommand()
@@ -76,7 +102,6 @@ std::shared_ptr<RsiState> RsiFactory::createCyclicState()
 
   if (state.use_count() != 1)
   {
-    std::cerr << m_state_i << " - " << state.use_count() << std::endl;
     throw std::runtime_error{"Cyclic states exhausted"};
   }
 

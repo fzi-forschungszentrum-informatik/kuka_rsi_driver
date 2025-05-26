@@ -35,18 +35,12 @@
 
 #include "kuka_rsi_driver/tracing.h"
 
+#include <bit>
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <lifecycle_msgs/msg/state.hpp>
 #include <limits>
 #include <rclcpp/rclcpp.hpp>
 
-constexpr std::array TCP_SENSOR_STATE_INTERFACES = {"position.x",
-                                                    "position.y",
-                                                    "position.z",
-                                                    "orientation.x",
-                                                    "orientation.y",
-                                                    "orientation.z",
-                                                    "orientation.w"};
 
 namespace kuka_rsi_driver {
 
@@ -59,167 +53,14 @@ KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
     return hardware_interface::CallbackReturn::ERROR;
   }
 
-  RCLCPP_DEBUG(get_logger(), "Robot joints:");
-  for (std::size_t i = 0; i < info_.joints.size(); ++i)
-  {
-    const auto& joint = info_.joints[i];
-
-    // Verify joint position command interface
-    if (joint.command_interfaces.size() != 1)
-    {
-      RCLCPP_FATAL(get_logger(),
-                   "Joint '%s' has %zu command interfaces, 1 expected",
-                   joint.name.c_str(),
-                   joint.command_interfaces.size());
-      return hardware_interface::CallbackReturn::ERROR;
-    }
-    if (joint.command_interfaces[0].name != hardware_interface::HW_IF_POSITION)
-    {
-      RCLCPP_FATAL(get_logger(),
-                   "Joint '%s' has command interface '%s', expected %s",
-                   joint.name.c_str(),
-                   joint.command_interfaces[0].name.c_str(),
-                   hardware_interface::HW_IF_POSITION);
-      return hardware_interface::CallbackReturn::ERROR;
-    }
-    m_joint_command_pos_ifaces.push_back(joint.name + "/" + joint.command_interfaces[0].name);
-
-    // Verify joint state interface
-    if (joint.state_interfaces.size() != 2)
-    {
-      RCLCPP_FATAL(get_logger(),
-                   "Joint '%s' has %zu state interfaces, 2 expected",
-                   joint.name.c_str(),
-                   joint.state_interfaces.size());
-      return hardware_interface::CallbackReturn::ERROR;
-    }
-    if (joint.state_interfaces[0].name != hardware_interface::HW_IF_POSITION)
-    {
-      RCLCPP_FATAL(get_logger(),
-                   "Joint '%s' has state interface '%s', expected %s",
-                   joint.name.c_str(),
-                   joint.state_interfaces[0].name.c_str(),
-                   hardware_interface::HW_IF_POSITION);
-      return hardware_interface::CallbackReturn::ERROR;
-    }
-    m_joint_state_pos_ifaces.push_back(joint.name + "/" + joint.state_interfaces[0].name);
-    if (joint.state_interfaces[1].name != hardware_interface::HW_IF_EFFORT)
-    {
-      RCLCPP_FATAL(get_logger(),
-                   "Joint '%s' has state interface '%s', expected %s",
-                   joint.name.c_str(),
-                   joint.state_interfaces[1].name.c_str(),
-                   hardware_interface::HW_IF_EFFORT);
-      return hardware_interface::CallbackReturn::ERROR;
-    }
-    m_joint_state_eff_ifaces.push_back(joint.name + "/" + joint.state_interfaces[1].name);
-
-    RCLCPP_DEBUG(get_logger(), "  - %zu: %s", i, joint.name.c_str());
-  }
-
-  // Verify sensors
-  if (info_.sensors.size() != 1)
-  {
-    RCLCPP_FATAL(get_logger(), "Expected 1 sensor element, but found %zu", info_.sensors.size());
-    return hardware_interface::CallbackReturn::ERROR;
-  }
-
-  // Verify TCP sensor
-  if (!info_.sensors[0].command_interfaces.empty())
-  {
-    RCLCPP_FATAL(get_logger(),
-                 "Sensor '%s' (tcp) should have no command interfaces, but found %zu",
-                 info_.sensors[0].name.c_str(),
-                 info_.sensors[0].command_interfaces.size());
-    return hardware_interface::CallbackReturn::ERROR;
-  }
-  if (info_.sensors[0].state_interfaces.size() != TCP_SENSOR_STATE_INTERFACES.size())
-  {
-    RCLCPP_FATAL(get_logger(),
-                 "Sensor '%s' (tcp) should have %zu state interfaces, but found %zu",
-                 info_.sensors[0].name.c_str(),
-                 TCP_SENSOR_STATE_INTERFACES.size(),
-                 info_.sensors[0].state_interfaces.size());
-    return hardware_interface::CallbackReturn::ERROR;
-  }
-  RCLCPP_DEBUG(get_logger(), "TCP sensor '%s' state interfaces:", info_.sensors[0].name.c_str());
-  for (std::size_t i = 0; i < info_.sensors[0].state_interfaces.size(); ++i)
-  {
-    RCLCPP_DEBUG(get_logger(),
-                 "  - %zu: %s (%s)",
-                 i,
-                 info_.sensors[0].state_interfaces[i].name.c_str(),
-                 TCP_SENSOR_STATE_INTERFACES[i]);
-    m_sensor_tcp_state_ifaces.push_back(info_.sensors[0].name + "/" +
-                                        info_.sensors[0].state_interfaces[i].name);
-  }
-
-  // Verify gpios
-  if (info_.gpios.size() != 2)
-  {
-    RCLCPP_FATAL(get_logger(), "Expected 2 gpio elements, but found %zu", info_.gpios.size());
-    return hardware_interface::CallbackReturn::ERROR;
-  }
-
-  // Verify robot state
-  if (!info_.gpios[0].command_interfaces.empty() || (info_.gpios[0].state_interfaces.size() != 1))
-  {
-    RCLCPP_FATAL(get_logger(),
-                 "GPIO '%s' (robot state) should provide one state interface, but found %zu state "
-                 "interfaces and %zu command interfaces",
-                 info_.gpios[0].name.c_str(),
-                 info_.gpios[0].state_interfaces.size(),
-                 info_.gpios[0].command_interfaces.size());
-    return hardware_interface::CallbackReturn::ERROR;
-  }
-  m_gpio_robot_state_iface = info_.gpios[0].name + "/" + info_.gpios[0].state_interfaces[0].name;
-  RCLCPP_DEBUG(get_logger(), "Robot state interface: %s", m_gpio_robot_state_iface.c_str());
-
-  // Verify speed scaling
-  if (!info_.gpios[1].command_interfaces.empty() || (info_.gpios[1].state_interfaces.size() != 1))
-  {
-    RCLCPP_FATAL(get_logger(),
-                 "GPIO '%s' (speed scaling) should provide one state interface, but found %zu "
-                 "state interfaces and %zu command interfaces",
-                 info_.gpios[1].name.c_str(),
-                 info_.gpios[1].state_interfaces.size(),
-                 info_.gpios[1].command_interfaces.size());
-    return hardware_interface::CallbackReturn::ERROR;
-  }
-  m_gpio_speed_scaling_state_iface =
-    info_.gpios[1].name + "/" + info_.gpios[1].state_interfaces[0].name;
-  RCLCPP_DEBUG(
-    get_logger(), "Speed scaling state interface: %s", m_gpio_speed_scaling_state_iface.c_str());
-
-  m_rsi_factory.emplace();
-  m_control_buf.emplace(*m_rsi_factory);
-
-  const auto listen_address = info_.hardware_parameters["listen_address"];
-  const auto listen_port    = info_.hardware_parameters["listen_port"];
-
-  if (listen_address.empty() || listen_port.empty())
-  {
-    RCLCPP_FATAL(get_logger(),
-                 "Hardware interface requires parameters listen_address and listen_port for RSI "
-                 "communication");
-    return hardware_interface::CallbackReturn::ERROR;
-  }
-
-  std::string sentype   = "KukaRsiDriver";
-  const auto sentype_it = info_.hardware_parameters.find("sentype");
-  if (sentype_it != info_.hardware_parameters.end())
-  {
-    sentype = sentype_it->second;
-  }
-
   try
   {
-    m_control_thread.emplace(sentype,
-                             listen_address,
-                             std::stoi(listen_port),
-                             &(*m_control_buf),
-                             &(*m_rsi_factory),
-                             get_logger());
+    m_rsi_config = std::make_shared<RsiConfig>(info_, get_logger());
+
+    m_rsi_factory.emplace(m_rsi_config);
+    m_control_buf.emplace(*m_rsi_factory);
+
+    m_control_thread.emplace(*m_rsi_config, &(*m_control_buf), &(*m_rsi_factory), get_logger());
   }
   catch (std::exception& ex)
   {
@@ -250,9 +91,19 @@ KukaRsiHardwareInterface::on_configure(const rclcpp_lifecycle::State& previous_s
     if (const auto state = m_control_buf->popStates(); state)
     {
       setState(*state);
+
+      const auto& joint_position_command_interfaces =
+        m_rsi_config->interfaceConfig().joint_position_command_interfaces;
       for (std::size_t i = 0; i < state->axis_actual_pos.size(); ++i)
       {
-        set_command(m_joint_command_pos_ifaces[i], state->axis_actual_pos[i] * M_PI / 180.);
+        set_command(joint_position_command_interfaces[i], state->axis_actual_pos[i] * M_PI / 180.);
+      }
+
+      // Passthrough interfaces
+      const auto& interface_config = m_rsi_config->interfaceConfig();
+      for (const auto& passthrough_index : interface_config.passthrough_command_interfaces)
+      {
+        set_command(passthrough_index.name, 0.0);
       }
 
       m_control_buf->zeroOffsets();
@@ -312,9 +163,37 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
 
   if (current_state == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)
   {
-    for (std::size_t i = 0; i < m_joint_command_pos_ifaces.size(); ++i)
+    const auto& joint_command_position_interfaces =
+      m_rsi_config->interfaceConfig().joint_position_command_interfaces;
+    for (std::size_t i = 0; i < joint_command_position_interfaces.size(); ++i)
     {
-      cmd->axis_command_pos[i] = get_command(m_joint_command_pos_ifaces[i]) * 180. / M_PI;
+      cmd->axis_command_pos[i] = get_command(joint_command_position_interfaces[i]) * 180. / M_PI;
+    }
+
+    // Passthrough interfaces
+    const auto& interface_config = m_rsi_config->interfaceConfig();
+    for (const auto& passthrough_index : interface_config.passthrough_command_interfaces)
+    {
+      switch (passthrough_index.type)
+      {
+        case DataType::BOOL:
+          cmd->passthrough.values_bool[passthrough_index.index] =
+            get_command(passthrough_index.name) == 1.0 ? true : false;
+          break;
+
+        case DataType::DOUBLE:
+          cmd->passthrough.values_double[passthrough_index.index] =
+            get_command(passthrough_index.name);
+          break;
+
+        case DataType::LONG:
+          cmd->passthrough.values_long[passthrough_index.index] =
+            std::bit_cast<std::uint64_t>(get_command(passthrough_index.name));
+          break;
+
+        default:
+          throw std::runtime_error{"Invalid data type"};
+      }
     }
   }
 
@@ -334,34 +213,62 @@ hardware_interface::return_type KukaRsiHardwareInterface::write(const rclcpp::Ti
 
 void KukaRsiHardwareInterface::setState(const RsiState& state)
 {
+  const auto& interface_config = m_rsi_config->interfaceConfig();
+
   // Joint states
   for (std::size_t i = 0; i < state.axis_actual_pos.size(); ++i)
   {
-    set_state(m_joint_state_pos_ifaces[i], state.axis_actual_pos[i] * M_PI / 180.);
-    set_state(m_joint_state_eff_ifaces[i], state.axis_eff[i]);
+    set_state(interface_config.joint_position_state_interfaces[i],
+              state.axis_actual_pos[i] * M_PI / 180.);
+    set_state(interface_config.joint_effort_state_interfaces[i], state.axis_eff[i]);
   }
 
   // TCP
-  set_state(m_sensor_tcp_state_ifaces[0], state.cartesian_actual_pos.x() / 1000);
-  set_state(m_sensor_tcp_state_ifaces[1], state.cartesian_actual_pos.y() / 1000);
-  set_state(m_sensor_tcp_state_ifaces[2], state.cartesian_actual_pos.z() / 1000);
+  set_state(interface_config.tcp_state_interfaces[0], state.cartesian_actual_pos.x() / 1000);
+  set_state(interface_config.tcp_state_interfaces[1], state.cartesian_actual_pos.y() / 1000);
+  set_state(interface_config.tcp_state_interfaces[2], state.cartesian_actual_pos.z() / 1000);
 
   std::array<double, 4> tcp_rpy;
   state.cartesian_actual_pos.getQuaternion(tcp_rpy[0], tcp_rpy[1], tcp_rpy[2], tcp_rpy[3]);
   for (std::size_t i = 0; i < tcp_rpy.size(); ++i)
   {
-    set_state(m_sensor_tcp_state_ifaces[i + 3], tcp_rpy[i]);
+    set_state(interface_config.tcp_state_interfaces[i + 3], tcp_rpy[i]);
   }
 
   // Robot state
-  set_state(m_gpio_robot_state_iface, static_cast<double>(state.program_status));
+  set_state(interface_config.robot_state_state_interface,
+            static_cast<double>(state.program_status));
   if (state.program_status == ProgramStatus::RUNNING)
   {
-    set_state(m_gpio_speed_scaling_state_iface, state.speed_scaling / 100);
+    set_state(interface_config.speed_scaling_state_interface, state.speed_scaling / 100);
   }
   else
   {
-    set_state(m_gpio_speed_scaling_state_iface, 0.0);
+    set_state(interface_config.speed_scaling_state_interface, 0.0);
+  }
+
+  // Passthrough interfaces
+  for (const auto& passthrough_index : interface_config.passthrough_state_interfaces)
+  {
+    switch (passthrough_index.type)
+    {
+      case DataType::BOOL:
+        set_state(passthrough_index.name,
+                  state.passthrough.values_bool[passthrough_index.index] ? 1.0 : 0.0);
+        break;
+
+      case DataType::DOUBLE:
+        set_state(passthrough_index.name, state.passthrough.values_double[passthrough_index.index]);
+        break;
+
+      case DataType::LONG:
+        set_state(passthrough_index.name,
+                  std::bit_cast<double>(state.passthrough.values_long[passthrough_index.index]));
+        break;
+
+      default:
+        throw std::runtime_error{"Invalid data type"};
+    }
   }
 }
 

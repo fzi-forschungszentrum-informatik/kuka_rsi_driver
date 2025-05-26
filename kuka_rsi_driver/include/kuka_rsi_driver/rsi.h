@@ -38,6 +38,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <vector>
 
 namespace kuka_rsi_driver {
 
@@ -113,10 +114,38 @@ enum class ProgramStatus : std::uint8_t
   STOPPED = 4
 };
 
+/*! \brief Values that are transparently tunneled between interfaces and RSI attributes
+ */
+struct RsiPassthrough
+{
+  /*! \brief Pre-Allocate passthrough storage of given size
+   *
+   * \param num_bool Number of boolean values to pre-allocate
+   * \param num_double Number of double values to pre-allocate
+   * \param num_long Number of long values to pre-allocate
+   */
+  explicit RsiPassthrough(std::size_t num_bool, std::size_t num_double, std::size_t num_long);
+
+  //! Passed-through boolean values
+  std::vector<bool> values_bool;
+  //! Passed-through double values
+  std::vector<double> values_double;
+  //! Passed-through long values
+  std::vector<std::uint64_t> values_long;
+};
+
 class RsiState
 {
 public:
-  explicit RsiState();
+  /*! \brief Pre-Allocate a new state object
+   *
+   * \param num_passthrough_bool Number of boolean passthrough values to pre-allocate
+   * \param num_passthrough_double Number of double passthrough values to pre-allocate
+   * \param num_passthrough_long Number of long passthrough values to pre-allocate
+   */
+  explicit RsiState(std::size_t num_passthrough_bool,
+                    std::size_t num_passthrough_double,
+                    std::size_t num_passthrough_long);
 
   JointArray axis_actual_pos;
   JointArray axis_setpoint_pos;
@@ -132,16 +161,30 @@ public:
   double speed_scaling;
 
   ProgramStatus program_status;
+
+  //! Additional values that are directly tunneled from RSI attributes to state interfaces
+  RsiPassthrough passthrough;
 };
 
 class RsiCommand
 {
 public:
-  RsiCommand();
+  /*! \brief Pre-Allocate a new command object
+   *
+   * \param num_passthrough_bool Number of boolean passthrough values to pre-allocate
+   * \param num_passthrough_double Number of double passthrough values to pre-allocate
+   * \param num_passthrough_long Number of long passthrough values to pre-allocate
+   */
+  explicit RsiCommand(std::size_t num_passthrough_bool,
+                      std::size_t num_passthrough_double,
+                      std::size_t num_passthrough_long);
 
   std::chrono::steady_clock::time_point write_time;
 
   JointArray axis_command_pos;
+
+  //! Additional values that are directly tunneled from command interfaces to RSI attributes
+  RsiPassthrough passthrough;
 
 private:
 };
