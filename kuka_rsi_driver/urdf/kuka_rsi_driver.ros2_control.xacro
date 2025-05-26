@@ -16,6 +16,8 @@
     name
     prefix
     use_mock_hardware:=false
+    mock_gpio_commands:=false
+    mock_sensor_commands:=false
     initial_positions:=${dict(joint_a1=0.0,joint_a2=0.0,joint_a3=0.0,joint_a4=0.0,joint_a5=0.0,joint_a6=0.0)}
     rsi_listen_ip
     rsi_listen_port:=49152
@@ -24,6 +26,8 @@
       <hardware>
         <xacro:if value="${use_mock_hardware}">
           <plugin>mock_components/GenericSystem</plugin>
+          <param name="mock_gpio_commands">${mock_gpio_commands}</param>
+          <param name="mock_sensor_commands">${mock_sensor_commands}</param>
         </xacro:if>
         <xacro:unless value="${use_mock_hardware}">
           <plugin>kuka_rsi_driver/KukaRsiHardwareInterface</plugin>

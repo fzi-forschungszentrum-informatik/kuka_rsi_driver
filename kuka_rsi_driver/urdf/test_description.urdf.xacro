@@ -8,6 +8,8 @@
   <xacro:arg name="macro_name" default="" />
 
   <xacro:arg name="use_mock_hardware" default="false" />
+  <xacro:arg name="mock_gpio_commands" default="false" />
+  <xacro:arg name="mock_sensor_commands" default="false" />
   <xacro:arg name="initial_positions_file" default="$(find kuka_rsi_driver)/config/initial_positions.yaml" />
 
   <xacro:arg name="rsi_listen_ip" default="127.0.0.1" />
@@ -29,6 +31,8 @@
     name="$(arg macro_name)"
     prefix="$(arg prefix)"
     use_mock_hardware="$(arg use_mock_hardware)"
+    mock_gpio_commands="$(arg mock_gpio_commands)"
+    mock_sensor_commands="$(arg mock_sensor_commands)"
     initial_positions="${xacro.load_yaml(initial_positions_file)}"
     rsi_listen_ip="$(arg rsi_listen_ip)"
     rsi_listen_port="$(arg rsi_listen_port)"
