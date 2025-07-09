@@ -13,9 +13,9 @@
          <ELEMENT TAG="DEF_AIPos" TYPE="DOUBLE" INDX="INTERNAL" />  <!-- Joint position -->
          <ELEMENT TAG="DEF_ASPos" TYPE="DOUBLE" INDX="INTERNAL" />  <!-- Joint setpoint -->
          <ELEMENT TAG="DEF_Delay" TYPE="LONG" INDX="INTERNAL" />    <!-- Number of late packets -->
-         <ELEMENT TAG="GearTorque.A1" TYPE="DOUBLE" INDX="1" />
 
          <!-- Joint torques -->
+         <ELEMENT TAG="GearTorque.A1" TYPE="DOUBLE" INDX="1" />
          <ELEMENT TAG="GearTorque.A2" TYPE="DOUBLE" INDX="2" />
          <ELEMENT TAG="GearTorque.A3" TYPE="DOUBLE" INDX="3" />
          <ELEMENT TAG="GearTorque.A4" TYPE="DOUBLE" INDX="4" />
