@@ -34,6 +34,7 @@ import pytest
 import rclpy
 import rclpy.node
 import launch_testing
+from math import radians
 
 from builtin_interfaces.msg import Duration
 from sensor_msgs.msg import JointState
@@ -158,8 +159,14 @@ class MoveSimTest(unittest.TestCase):
         joint_names = [f"{prefix}joint_a{i+1}" for i in range(6)]
         test_points = [
             (Duration(sec=2, nanosec=0), [0.0 for j in joint_names]),
-            (Duration(sec=4, nanosec=0), [-1.0 for j in joint_names]),
-            (Duration(sec=8, nanosec=0), [1.0 for j in joint_names]),
+            (
+                Duration(sec=4, nanosec=0),
+                [radians(v) for v in [-90, -120, -10, -270, -90, -270]],
+            ),
+            (
+                Duration(sec=6, nanosec=0),
+                [radians(v) for v in [90, -20, 120, 270, 90, 270]],
+            ),
         ]
         test_trajectory = JointTrajectory(
             joint_names=joint_names,
@@ -178,11 +185,12 @@ class MoveSimTest(unittest.TestCase):
             3,
         )
         result = follow_joint_trajectory_client.send_goal(
-            FollowJointTrajectory.Goal(trajectory=test_trajectory), timeout=9
+            FollowJointTrajectory.Goal(trajectory=test_trajectory), timeout=7
         )
         self.assertEqual(result.error_code, FollowJointTrajectory.Result.SUCCESSFUL)
 
         # Verify joint state
+        time.sleep(1)
         self.log.info("Verifying final position using joint_states")
         joint_state = subscribe_once(
             "/joint_states", JointState, self.node, 3, self.log
