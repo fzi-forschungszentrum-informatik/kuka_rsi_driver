@@ -23,6 +23,32 @@
     rsi_listen_ip
     rsi_listen_port:=49152
     ">
+    <xacro:kuka_rsi_driver_control_passthrough
+      name="${name}"
+      prefix="${prefix}"
+      rw_rate="${rw_rate}"
+      use_mock_hardware="${use_mock_hardware}"
+      mock_gpio_commands="${mock_gpio_commands}"
+      mock_sensor_commands="${mock_sensor_commands}"
+      initial_positions="${initial_positions}"
+      rsi_listen_ip="${rsi_listen_ip}"
+      rsi_listen_port="${rsi_listen_port}">
+      <empty />
+    </xacro:kuka_rsi_driver_control_passthrough>
+  </xacro:macro>
+
+  <xacro:macro name="kuka_rsi_driver_control_passthrough" params="
+    name
+    prefix
+    rw_rate:=0
+    use_mock_hardware:=false
+    mock_gpio_commands:=false
+    mock_sensor_commands:=false
+    initial_positions:=${dict(joint_a1=0.0,joint_a2=0.0,joint_a3=0.0,joint_a4=0.0,joint_a5=0.0,joint_a6=0.0)}
+    rsi_listen_ip
+    rsi_listen_port:=49152
+    **passthrough
+    ">
     <ros2_control name="${name}" type="system" rw_rate="${rw_rate}">
       <hardware>
         <xacro:if value="${use_mock_hardware}">
@@ -79,6 +105,8 @@
           <param name="initial_value">1</param>
         </state_interface>
       </gpio>
+
+      <xacro:insert_block name="passthrough" />
 
     </ros2_control>
   </xacro:macro>

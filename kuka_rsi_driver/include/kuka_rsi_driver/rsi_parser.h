@@ -36,6 +36,7 @@
 #define KUKA_RSI_DRIVER_RSI_PARSER_H_INCLUDED
 
 #include "rsi.h"
+#include "rsi_config.h"
 #include "rsi_factory.h"
 
 #include <boost/pool/pool.hpp>
@@ -211,11 +212,15 @@ class RsiParser
 public:
   /*! \brief Create a new parser
    *
-   * \param log Logger to use.
+   * \param config Configuration of all additional tags
    * \param rsi_factory Factory for pre-allocated RSI states
+   * \param log Logger to use.
    * \param buf_size Size of parsing buffer to allocate. Only input within this size can be parsed.
    */
-  explicit RsiParser(rclcpp::Logger log, RsiFactory* rsi_factory, std::size_t buf_size = 1024);
+  explicit RsiParser(const TransmissionConfig& config,
+                     RsiFactory* rsi_factory,
+                     rclcpp::Logger log,
+                     std::size_t buf_size = 1024);
 
   RsiParser(const RsiParser&)            = delete;
   RsiParser& operator=(const RsiParser&) = delete;
