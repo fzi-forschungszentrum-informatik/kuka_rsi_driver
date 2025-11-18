@@ -77,6 +77,7 @@ void ControlThread::start()
 void ControlThread::stop()
 {
   m_thread_stop.store(true);
+  m_thread.join();
 
   RCLCPP_INFO(m_log, "Control thread stopped");
 }
