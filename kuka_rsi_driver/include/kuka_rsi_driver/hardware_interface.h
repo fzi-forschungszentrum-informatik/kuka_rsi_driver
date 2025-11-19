@@ -52,7 +52,7 @@ class KukaRsiHardwareInterface : public hardware_interface::SystemInterface
 {
 public:
   hardware_interface::CallbackReturn
-  on_init(const hardware_interface::HardwareInfo& system_info) override;
+  on_init(const hardware_interface::HardwareComponentInterfaceParams& params) override;
   hardware_interface::CallbackReturn
   on_cleanup(const rclcpp_lifecycle::State& previous_state) override;
 

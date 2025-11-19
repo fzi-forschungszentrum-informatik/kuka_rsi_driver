@@ -50,10 +50,10 @@ constexpr std::array TCP_SENSOR_STATE_INTERFACES = {"position.x",
 
 namespace kuka_rsi_driver {
 
-hardware_interface::CallbackReturn
-KukaRsiHardwareInterface::on_init(const hardware_interface::HardwareInfo& info)
+hardware_interface::CallbackReturn KukaRsiHardwareInterface::on_init(
+  const hardware_interface::HardwareComponentInterfaceParams& params)
 {
-  if (hardware_interface::SystemInterface::on_init(info) !=
+  if (hardware_interface::SystemInterface::on_init(params) !=
       hardware_interface::CallbackReturn::SUCCESS)
   {
     return hardware_interface::CallbackReturn::ERROR;
